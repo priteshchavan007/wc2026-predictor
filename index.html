@@ -122,7 +122,7 @@
       backdrop-filter: blur(40px);
       -webkit-backdrop-filter: blur(40px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      overflow: hidden;
+      overflow: visible;
     }
     .sticky-top::before {
       content: '';
@@ -395,10 +395,10 @@
     .match-card:hover .team-flag { transform: scale(1.1); }
     .team-name { font-size: 15px; font-weight: 800; text-align: center; letter-spacing: 0.3px; }
     .vs {
-      font-size: 14px; color: var(--coral); font-weight: 900; padding: 0 8px;
+      font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 900; padding: 0 8px;
       letter-spacing: 2px;
-      text-shadow: 0 2px 8px rgba(228, 72, 91, 0.3);
     }
+    [data-theme="light"] .vs { color: rgba(0,0,0,0.4); }
 
     /* === LIQUID GLASS PREDICTION BUTTONS === */
     .predict-btns { display: flex; gap: 10px; margin-top: 18px; position: relative; z-index: 1; }
