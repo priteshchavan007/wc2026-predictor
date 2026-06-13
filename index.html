@@ -2111,32 +2111,57 @@ async function fetchLiveScores() {
     });
     if (newDynamic.length > 0) dynamicMatches = newDynamic;
 
-    // Update live scores
+    // Update live scores — store under both hardcoded and dynamic IDs
     apiMatches.forEach(m => {
       const homeName = m.homeTeam.shortName;
       const awayName = m.awayTeam.shortName;
       if (!homeName || !awayName) return;
 
-      const localMatch = findLocalMatch(homeName, awayName);
-      if (!localMatch) return;
-
       const score = m.score;
       const status = m.status;
-
-      liveScores[localMatch.id] = {
+      const scoreData = {
         status,
         homeScore: score.fullTime.home,
         awayScore: score.fullTime.away,
         winner: score.winner
       };
 
-      // Auto-set result in Firebase when match finishes
-      if (status === 'FINISHED' && score.winner && !results[localMatch.id]) {
-        let winnerName;
-        if (score.winner === 'HOME_TEAM') winnerName = localMatch.team1;
-        else if (score.winner === 'AWAY_TEAM') winnerName = localMatch.team2;
-        else winnerName = 'Draw';
-        db.ref('results/' + localMatch.id).set(winnerName);
+      // Find in hardcoded MATCHES
+      const apiH = normalizeTeamName(homeName);
+      const apiA = normalizeTeamName(awayName);
+      const hardcodedMatch = MATCHES.find(mt => {
+        const h = mt.team1.toLowerCase();
+        const a = mt.team2.toLowerCase();
+        return (h === apiH || h.includes(apiH) || apiH.includes(h)) &&
+               (a === apiA || a.includes(apiA) || apiA.includes(a));
+      });
+
+      // Store under hardcoded ID
+      if (hardcodedMatch) {
+        liveScores[hardcodedMatch.id] = scoreData;
+
+        if (status === 'FINISHED' && score.winner && !results[hardcodedMatch.id]) {
+          let winnerName;
+          if (score.winner === 'HOME_TEAM') winnerName = hardcodedMatch.team1;
+          else if (score.winner === 'AWAY_TEAM') winnerName = hardcodedMatch.team2;
+          else winnerName = 'Draw';
+          db.ref('results/' + hardcodedMatch.id).set(winnerName);
+        }
+      }
+
+      // Also store under api_ ID for dynamic matches
+      const apiId = 'api_' + m.id;
+      liveScores[apiId] = scoreData;
+
+      if (!hardcodedMatch && status === 'FINISHED' && score.winner && !results[apiId]) {
+        const dynMatch = dynamicMatches.find(dm => dm.id === apiId);
+        if (dynMatch) {
+          let winnerName;
+          if (score.winner === 'HOME_TEAM') winnerName = dynMatch.team1;
+          else if (score.winner === 'AWAY_TEAM') winnerName = dynMatch.team2;
+          else winnerName = 'Draw';
+          db.ref('results/' + apiId).set(winnerName);
+        }
       }
     });
 
