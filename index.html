@@ -20,28 +20,41 @@
       --red: #FF3D57;
       --silver: #A8B0B8;
       --bronze: #CD7F32;
+      --glass-blur: 20px;
     }
 
     [data-theme="dark"] {
-      --bg: #0B0E1A;
-      --bg-secondary: #131729;
-      --card-bg: #1A1F35;
-      --card-border: rgba(255,255,255,0.06);
+      --bg: #060818;
+      --bg-secondary: rgba(18, 22, 45, 0.7);
+      --card-bg: rgba(25, 30, 60, 0.55);
+      --card-border: rgba(255,255,255,0.08);
+      --card-shine: rgba(255,255,255,0.04);
       --text: #FFFFFF;
       --text-secondary: #8B92A8;
-      --header-bg: var(--navy);
-      --surface: #1E2340;
+      --header-bg: rgba(15, 10, 50, 0.85);
+      --surface: rgba(30, 35, 65, 0.6);
+      --glass-bg: rgba(20, 25, 55, 0.45);
+      --glass-border: rgba(255,255,255,0.12);
+      --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%);
+      --btn-glass: rgba(255,255,255,0.06);
+      --blob-opacity: 0.4;
     }
 
     [data-theme="light"] {
-      --bg: #F5F7FA;
-      --bg-secondary: #FFFFFF;
-      --card-bg: #FFFFFF;
+      --bg: #F0F4F8;
+      --bg-secondary: rgba(255, 255, 255, 0.7);
+      --card-bg: rgba(255, 255, 255, 0.55);
       --card-border: rgba(0,0,0,0.06);
+      --card-shine: rgba(255,255,255,0.8);
       --text: #1A1A2E;
-      --text-secondary: #6B7280;
-      --header-bg: var(--navy);
-      --surface: #F0F2F5;
+      --text-secondary: #5A6175;
+      --header-bg: rgba(27, 20, 100, 0.92);
+      --surface: rgba(240, 242, 248, 0.7);
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(0,0,0,0.08);
+      --glass-shine: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 50%);
+      --btn-glass: rgba(0,0,0,0.03);
+      --blob-opacity: 0.25;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,346 +65,649 @@
       color: var(--text);
       min-height: 100vh;
       -webkit-tap-highlight-color: transparent;
-      transition: background 0.4s, color 0.4s;
+      transition: background 0.5s ease, color 0.4s;
+      overflow-x: hidden;
+    }
+
+    /* === VIBRANT BACKGROUND BLOBS === */
+    .bg-blobs {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg-blobs .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: var(--blob-opacity);
+      animation: blobFloat 20s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 400px; height: 400px; background: var(--teal); top: -10%; left: -10%; animation-delay: 0s; }
+    .blob-2 { width: 350px; height: 350px; background: var(--coral); top: 20%; right: -15%; animation-delay: -5s; }
+    .blob-3 { width: 500px; height: 500px; background: var(--magenta); bottom: -10%; left: 20%; animation-delay: -10s; }
+    .blob-4 { width: 300px; height: 300px; background: var(--gold); top: 50%; left: -20%; animation-delay: -7s; }
+    .blob-5 { width: 450px; height: 450px; background: var(--sky); bottom: 20%; right: -10%; animation-delay: -3s; }
+    .blob-6 { width: 320px; height: 320px; background: var(--navy); top: 70%; right: 30%; animation-delay: -12s; }
+
+    @keyframes blobFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -20px) scale(1.05); }
+      66% { transform: translate(-20px, 15px) scale(0.95); }
+      100% { transform: translate(10px, -10px) scale(1.02); }
     }
 
     /* === HEADER === */
     .header {
-      background: var(--navy);
-      padding: 18px 16px 14px;
+      background: var(--header-bg);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      padding: 20px 16px 16px;
       text-align: center;
       position: sticky;
       top: 0;
       z-index: 100;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
       position: relative;
       overflow: hidden;
     }
     .header::before {
       content: '';
       position: absolute;
-      top: -50%; left: -20%; width: 60%; height: 200%;
-      background: var(--teal);
-      opacity: 0.08;
-      transform: rotate(-20deg);
-      border-radius: 40%;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, rgba(0,178,169,0.1) 0%, transparent 40%, rgba(228,72,91,0.08) 100%);
+      pointer-events: none;
     }
     .header::after {
       content: '';
       position: absolute;
-      bottom: -60%; right: -10%; width: 50%; height: 200%;
-      background: var(--coral);
-      opacity: 0.06;
-      transform: rotate(15deg);
-      border-radius: 40%;
+      top: -2px; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--teal), var(--sky), var(--coral), var(--magenta), var(--gold));
     }
 
     .header h1 {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 900;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       color: #fff;
       position: relative; z-index: 1;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
-    .header p { font-size: 11px; opacity: 0.7; margin-top: 2px; color: #fff; font-weight: 500; position: relative; z-index: 1; }
+    .header p {
+      font-size: 11px; opacity: 0.7; margin-top: 3px; color: #fff;
+      font-weight: 500; position: relative; z-index: 1;
+      letter-spacing: 0.5px;
+    }
 
     .user-badge {
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(255,255,255,0.1);
-      padding: 5px 12px; border-radius: 20px;
-      font-size: 11px; font-weight: 600; color: #fff;
-      position: absolute; right: 12px; top: 16px; z-index: 2;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; color: #fff;
+      position: absolute; right: 12px; top: 18px; z-index: 2;
+      border: 1px solid rgba(255,255,255,0.15);
     }
-    .user-badge .dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; animation: pulse 2s infinite; }
+    .user-badge .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; box-shadow: 0 0 6px var(--green); }
 
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 
     .theme-toggle {
-      position: absolute; left: 12px; top: 16px; z-index: 2;
-      background: rgba(255,255,255,0.1); border: none; color: #fff;
-      width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+      position: absolute; left: 12px; top: 18px; z-index: 2;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
       font-size: 16px; display: flex; align-items: center; justify-content: center;
-      transition: transform 0.3s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.3s, background 0.3s;
     }
-    .theme-toggle:active { transform: scale(0.9); }
+    .theme-toggle:hover { background: rgba(255,255,255,0.2); }
+    .theme-toggle:active { transform: scale(0.88) rotate(20deg); }
 
-    /* === TABS === */
+    /* === PILL TABS === */
     .tabs {
       display: flex;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--card-border);
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
       position: sticky;
-      top: 66px;
+      top: 70px;
       z-index: 99;
+      background: transparent;
+    }
+    .tabs::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      opacity: 0.8;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: -1;
     }
 
     .tab {
-      flex: 1; padding: 14px 6px; text-align: center;
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
       color: var(--text-secondary);
-      cursor: pointer; border-bottom: 3px solid transparent;
-      transition: all 0.25s;
+      cursor: pointer;
+      border-radius: 50px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     }
-    .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
+      border-radius: 50px;
+    }
+    .tab:hover { background: rgba(0, 178, 169, 0.1); border-color: rgba(0, 178, 169, 0.3); }
+    .tab.active {
+      background: linear-gradient(135deg, var(--teal), var(--sky));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 20px rgba(0, 178, 169, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+      transform: scale(1.02);
+    }
+    .tab:active { transform: scale(0.95); }
 
-    .screen { display: none; padding: 16px; max-width: 500px; margin: 0 auto; }
-    .screen.active { display: block; animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .screen { display: none; padding: 16px; max-width: 520px; margin: 0 auto; position: relative; z-index: 1; }
+    .screen.active { display: block; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
     /* === LOGIN === */
     .login-screen {
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; min-height: 80vh; padding: 32px; text-align: center;
+      position: relative; z-index: 1;
     }
     .login-screen .trophy {
-      font-size: 80px; margin-bottom: 20px;
-      animation: bounce 3s ease-in-out infinite;
+      font-size: 100px; margin-bottom: 24px;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 10px 30px rgba(242, 169, 0, 0.3));
     }
-    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
 
     .login-screen h2 {
-      font-size: 30px; font-weight: 900; margin-bottom: 8px;
-      text-transform: uppercase; letter-spacing: 0.5px;
+      font-size: 38px; font-weight: 900; margin-bottom: 10px;
+      text-transform: uppercase; letter-spacing: 1px;
+      background: linear-gradient(135deg, var(--teal), var(--sky));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    .login-screen > p { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; max-width: 300px; line-height: 1.6; }
+    .login-screen > p {
+      color: var(--text-secondary); font-size: 15px; margin-bottom: 36px;
+      max-width: 320px; line-height: 1.7; font-weight: 500;
+    }
 
-    .input-group { width: 100%; max-width: 300px; margin-bottom: 14px; }
+    .input-group { width: 100%; max-width: 320px; margin-bottom: 16px; }
     .input-group input {
-      width: 100%; padding: 15px 18px;
-      border: 2px solid var(--card-border);
-      border-radius: 12px;
-      background: var(--card-bg);
+      width: 100%; padding: 16px 20px;
+      border: 2px solid var(--glass-border);
+      border-radius: 16px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       color: var(--text);
-      font-size: 16px; font-weight: 500; font-family: inherit;
-      outline: none; transition: all 0.25s;
+      font-size: 16px; font-weight: 600; font-family: inherit;
+      outline: none; transition: all 0.3s;
     }
-    .input-group input:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 178, 169, 0.15); }
-    .input-group input::placeholder { color: var(--text-secondary); }
+    .input-group input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(0, 178, 169, 0.15), 0 8px 30px rgba(0,0,0,0.1);
+      background: var(--card-bg);
+    }
+    .input-group input::placeholder { color: var(--text-secondary); font-weight: 500; }
 
     .btn {
-      padding: 16px 32px; border: none; border-radius: 12px;
-      font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
-      text-transform: uppercase; letter-spacing: 0.5px;
-      transition: all 0.25s; width: 100%; max-width: 300px;
+      padding: 18px 36px; border: none; border-radius: 16px;
+      font-size: 16px; font-weight: 900; cursor: pointer; font-family: inherit;
+      text-transform: uppercase; letter-spacing: 1px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%; max-width: 320px;
+      position: relative; overflow: hidden;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 50%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent);
+      pointer-events: none;
+      border-radius: 16px 16px 0 0;
     }
     .btn-primary {
-      background: var(--coral);
+      background: linear-gradient(135deg, var(--coral), var(--magenta));
       color: #fff;
-      box-shadow: 0 4px 15px rgba(228, 72, 91, 0.35);
+      box-shadow: 0 6px 25px rgba(228, 72, 91, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
     }
-    .btn-primary:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 25px rgba(228, 72, 91, 0.4); }
-    .btn-primary:active { transform: translateY(0) scale(0.98); }
+    .btn-primary:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 35px rgba(228, 72, 91, 0.5); }
+    .btn-primary:active { transform: translateY(0) scale(0.97); }
 
     .section-label {
-      font-size: 11px; font-weight: 800; color: var(--text-secondary);
-      text-transform: uppercase; letter-spacing: 2px;
-      margin-bottom: 14px; margin-top: 24px;
+      font-size: 12px; font-weight: 900; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 2.5px;
+      margin-bottom: 16px; margin-top: 28px;
     }
     .section-label:first-child { margin-top: 8px; }
 
-    /* === MATCH CARD === */
+    /* === MATCH CARD — GLASSMORPHISM === */
     .match-card {
       background: var(--card-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 14px;
-      transition: all 0.25s;
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
     }
     .match-card::before {
       content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, var(--teal), var(--coral));
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
+      border-radius: 20px;
+    }
+    .match-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--teal), var(--sky), var(--coral));
       transform: scaleX(0);
       transform-origin: left;
-      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .match-card:hover::before { transform: scaleX(1); }
+    .match-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
+    .match-card:hover::after { transform: scaleX(1); }
     .match-card.predicted {
-      border-color: rgba(0, 200, 81, 0.3);
+      border-color: rgba(0, 200, 81, 0.25);
+      box-shadow: 0 4px 20px rgba(0, 200, 81, 0.1);
     }
-    .match-card.predicted::before { transform: scaleX(1); background: var(--green); }
-    .match-card.locked { opacity: 0.55; filter: grayscale(0.3); }
+    .match-card.predicted::after { transform: scaleX(1); background: linear-gradient(90deg, var(--green), var(--teal)); }
+    .match-card.locked { opacity: 0.5; filter: grayscale(0.3); }
 
-    .match-meta { text-align: center; margin-bottom: 6px; }
-    .match-meta .time { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+    /* Team color wash on card */
+    .match-card .team-wash {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      border-radius: 20px;
+    }
+
+    .match-meta { text-align: center; margin-bottom: 8px; position: relative; z-index: 1; }
+    .match-meta .time { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
     .match-meta .group-tag {
-      font-size: 9px; font-weight: 800;
-      background: var(--navy); color: #fff;
-      padding: 4px 10px; border-radius: 6px;
-      display: inline-block; margin-bottom: 6px;
-      letter-spacing: 1px; text-transform: uppercase;
-    }
-    [data-theme="light"] .match-meta .group-tag { background: var(--navy); }
-    .match-meta .venue { font-size: 10px; color: var(--text-secondary); margin-top: 3px; }
-
-    .match-teams { display: flex; align-items: center; justify-content: space-between; margin: 14px 0; }
-    .team { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
-    .team-flag {
-      width: 54px; height: 54px; border-radius: 50%;
-      background: var(--surface);
-      display: flex; align-items: center; justify-content: center; font-size: 30px;
-      border: 3px solid var(--card-border);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .match-card:hover .team-flag { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .team-name { font-size: 12px; font-weight: 700; text-align: center; }
-    .vs {
-      font-size: 13px; color: var(--coral); font-weight: 900; padding: 0 6px;
-      letter-spacing: 1px;
-    }
-
-    .predict-btns { display: flex; gap: 8px; margin-top: 16px; }
-    .predict-btn {
-      flex: 1; padding: 12px 6px;
-      border: 2px solid var(--card-border);
-      border-radius: 10px;
-      background: var(--surface);
-      color: var(--text); font-size: 11px; font-weight: 700;
-      cursor: pointer; transition: all 0.2s; font-family: inherit;
-    }
-    .predict-btn:hover { border-color: var(--teal); background: rgba(0, 178, 169, 0.08); }
-    .predict-btn:active { transform: scale(0.96); }
-    .predict-btn.selected {
-      border-color: var(--teal);
-      background: var(--teal);
+      font-size: 9px; font-weight: 900;
+      background: linear-gradient(135deg, var(--navy), rgba(27, 20, 100, 0.8));
       color: #fff;
-      box-shadow: 0 4px 12px rgba(0, 178, 169, 0.35);
-      animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      padding: 5px 12px; border-radius: 20px;
+      display: inline-block; margin-bottom: 6px;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.1);
     }
-    @keyframes pop { 0% { transform: scale(0.9); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    [data-theme="light"] .match-meta .group-tag { background: linear-gradient(135deg, var(--navy), #2d2680); }
+    .match-meta .venue { font-size: 10px; color: var(--text-secondary); margin-top: 4px; font-weight: 500; }
 
-    .prediction-status { text-align: center; font-size: 12px; color: var(--green); margin-top: 12px; font-weight: 700; }
+    .match-teams { display: flex; align-items: center; justify-content: space-between; margin: 16px 0; position: relative; z-index: 1; }
+    .team { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; }
+    .team-flag {
+      font-size: 44px;
+      line-height: 1;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+    .match-card:hover .team-flag { transform: scale(1.1); }
+    .team-name { font-size: 15px; font-weight: 800; text-align: center; letter-spacing: 0.3px; }
+    .vs {
+      font-size: 14px; color: var(--coral); font-weight: 900; padding: 0 8px;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px rgba(228, 72, 91, 0.3);
+    }
+
+    /* === LIQUID GLASS PREDICTION BUTTONS === */
+    .predict-btns { display: flex; gap: 10px; margin-top: 18px; position: relative; z-index: 1; }
+    .predict-btn {
+      flex: 1; padding: 14px 8px;
+      border: 1.5px solid var(--glass-border);
+      border-radius: 14px;
+      background: var(--btn-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--text); font-size: 12px; font-weight: 800;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: inherit;
+      position: relative; overflow: hidden;
+    }
+    .predict-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 50%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.08), transparent);
+      pointer-events: none;
+      border-radius: 14px 14px 0 0;
+    }
+    .predict-btn:hover {
+      border-color: var(--teal);
+      background: rgba(0, 178, 169, 0.1);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(0, 178, 169, 0.15);
+    }
+    .predict-btn:active { transform: scale(0.93); }
+    .predict-btn.selected {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--teal), var(--sky));
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(0, 178, 169, 0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+      animation: popBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popBounce {
+      0% { transform: scale(0.85); }
+      40% { transform: scale(1.08); }
+      70% { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+
+    /* Ripple effect */
+    .predict-btn .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transform: scale(0);
+      animation: rippleAnim 0.6s ease-out;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+    /* Celebration animation */
+    .celebration {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .confetti-piece {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      animation: confettiBurst 0.8s ease-out forwards;
+    }
+    @keyframes confettiBurst {
+      0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0); opacity: 0; }
+    }
+
+    .prediction-status {
+      text-align: center; font-size: 13px; color: var(--green);
+      margin-top: 14px; font-weight: 800; position: relative; z-index: 1;
+      letter-spacing: 0.3px;
+    }
 
     /* === LEADERBOARD === */
     .lb-item {
-      display: flex; align-items: center; padding: 14px 16px;
+      display: flex; align-items: center; padding: 16px 18px;
       background: var(--card-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       border: 1px solid var(--card-border);
-      border-radius: 12px; margin-bottom: 10px; gap: 12px;
-      transition: all 0.2s;
+      border-radius: 16px; margin-bottom: 12px; gap: 14px;
+      transition: all 0.25s;
       animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+      position: relative; overflow: hidden;
+    }
+    .lb-item::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
     }
     .lb-item:nth-child(1) { animation-delay: 0s; }
-    .lb-item:nth-child(2) { animation-delay: 0.05s; }
-    .lb-item:nth-child(3) { animation-delay: 0.1s; }
-    .lb-item:nth-child(4) { animation-delay: 0.15s; }
-    .lb-item:nth-child(5) { animation-delay: 0.2s; }
+    .lb-item:nth-child(2) { animation-delay: 0.06s; }
+    .lb-item:nth-child(3) { animation-delay: 0.12s; }
+    .lb-item:nth-child(4) { animation-delay: 0.18s; }
+    .lb-item:nth-child(5) { animation-delay: 0.24s; }
 
-    .lb-item.top-1 { border-color: var(--gold); border-width: 2px; }
-    .lb-item.top-2 { border-color: var(--silver); }
-    .lb-item.top-3 { border-color: var(--bronze); }
+    .lb-item.top-1 {
+      border-color: rgba(242, 169, 0, 0.4);
+      box-shadow: 0 4px 20px rgba(242, 169, 0, 0.15);
+    }
+    .lb-item.top-2 { border-color: rgba(168, 176, 184, 0.4); }
+    .lb-item.top-3 { border-color: rgba(205, 127, 50, 0.4); }
 
     .rank {
-      width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center;
-      justify-content: center; font-size: 13px; font-weight: 900;
+      width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 14px; font-weight: 900;
       background: var(--surface); flex-shrink: 0;
+      position: relative; z-index: 1;
     }
-    .top-1 .rank { background: var(--gold); color: #000; }
-    .top-2 .rank { background: var(--silver); color: #000; }
-    .top-3 .rank { background: var(--bronze); color: #fff; }
+    .top-1 .rank { background: linear-gradient(135deg, var(--gold), #FFD700); color: #000; box-shadow: 0 3px 10px rgba(242, 169, 0, 0.3); }
+    .top-2 .rank { background: linear-gradient(135deg, var(--silver), #C0C0C0); color: #000; }
+    .top-3 .rank { background: linear-gradient(135deg, var(--bronze), #B87333); color: #fff; }
 
-    .lb-name { flex: 1; font-size: 14px; font-weight: 700; }
-    .lb-you { font-size: 9px; color: var(--teal); margin-left: 6px; font-weight: 800; text-transform: uppercase; }
-    .lb-stats { text-align: right; }
-    .lb-pts { font-size: 18px; font-weight: 900; color: var(--coral); }
-    .lb-record { font-size: 10px; color: var(--text-secondary); margin-top: 2px; font-weight: 500; }
+    .lb-name { flex: 1; font-size: 15px; font-weight: 800; position: relative; z-index: 1; }
+    .lb-you { font-size: 9px; color: var(--teal); margin-left: 6px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .lb-stats { text-align: right; position: relative; z-index: 1; }
+    .lb-pts { font-size: 20px; font-weight: 900; color: var(--coral); }
+    .lb-record { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
 
     /* === RESULTS === */
     .result-card {
       background: var(--card-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       border: 1px solid var(--card-border);
-      border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+      border-radius: 18px; padding: 18px 20px; margin-bottom: 14px;
+      position: relative; overflow: hidden;
     }
-    .result-teams { display: flex; align-items: center; justify-content: space-between; }
-    .result-team { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; font-weight: 600; }
-    .result-team.winner { font-weight: 800; color: var(--green); }
-    .result-team .flag { font-size: 22px; }
-    .result-vs { font-size: 10px; color: var(--text-secondary); padding: 0 10px; font-weight: 800; }
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
+    }
+    .result-teams { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+    .result-team { display: flex; align-items: center; gap: 10px; flex: 1; font-size: 15px; font-weight: 700; }
+    .result-team.winner { font-weight: 900; color: var(--green); }
+    .result-team .flag { font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+    .result-score {
+      font-size: 22px; font-weight: 900; color: var(--text);
+      padding: 0 12px; text-align: center;
+      min-width: 60px;
+      position: relative; z-index: 1;
+    }
+    .result-score .score-display {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 6px 12px;
+      border: 1px solid var(--card-border);
+    }
+    .result-vs { font-size: 11px; color: var(--text-secondary); padding: 0 12px; font-weight: 800; text-align: center; }
     .result-bottom {
-      margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-border);
-      font-size: 11px; display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--card-border);
+      font-size: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 700;
+      position: relative; z-index: 1;
     }
-    .pick-correct { color: var(--green); font-weight: 800; }
-    .pick-wrong { color: var(--red); font-weight: 700; }
+    .pick-correct { color: var(--green); font-weight: 900; }
+    .pick-wrong { color: var(--red); font-weight: 800; }
 
     /* === ADMIN === */
     .admin-card {
       background: var(--card-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       border: 1px solid var(--card-border);
-      border-radius: 12px; padding: 14px; margin-bottom: 10px;
+      border-radius: 16px; padding: 16px; margin-bottom: 12px;
+      position: relative; overflow: hidden;
     }
-    .admin-card h4 { font-size: 13px; margin-bottom: 10px; font-weight: 700; }
-    .admin-btns { display: flex; gap: 6px; }
+    .admin-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
+    }
+    .admin-card h4 { font-size: 14px; margin-bottom: 12px; font-weight: 800; position: relative; z-index: 1; }
+    .admin-btns { display: flex; gap: 8px; position: relative; z-index: 1; }
     .admin-btn {
-      flex: 1; padding: 10px 4px;
-      border: 2px solid var(--card-border); border-radius: 8px;
-      background: var(--surface); color: var(--text);
-      font-size: 11px; font-weight: 600; font-family: inherit;
+      flex: 1; padding: 11px 6px;
+      border: 1.5px solid var(--glass-border); border-radius: 10px;
+      background: var(--btn-glass); color: var(--text);
+      font-size: 11px; font-weight: 700; font-family: inherit;
       cursor: pointer; transition: all 0.2s;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .admin-btn:hover { border-color: var(--teal); }
     .admin-btn.done {
-      border-color: var(--green); background: var(--green);
-      color: #000; font-weight: 800;
+      border-color: transparent; background: linear-gradient(135deg, var(--green), #00E676);
+      color: #000; font-weight: 900;
+      box-shadow: 0 4px 12px rgba(0, 200, 81, 0.3);
     }
 
-    /* === SHARE === */
+    /* === SHARE BANNER === */
     .share-banner {
-      background: var(--navy);
-      border-radius: 14px; padding: 20px; text-align: center; margin: 20px 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      border-radius: 20px; padding: 24px; text-align: center; margin: 24px 0;
       position: relative; overflow: hidden;
     }
     .share-banner::before {
-      content: ''; position: absolute; top: -30%; right: -10%; width: 40%; height: 160%;
-      background: var(--teal); opacity: 0.1; transform: rotate(15deg); border-radius: 30%;
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, rgba(0,178,169,0.1) 0%, rgba(228,72,91,0.08) 100%);
+      pointer-events: none;
     }
-    .share-banner p { font-size: 14px; margin-bottom: 12px; color: #fff; font-weight: 600; position: relative; }
+    .share-banner p { font-size: 15px; margin-bottom: 14px; color: var(--text); font-weight: 700; position: relative; z-index: 1; }
     .share-btn {
-      background: var(--coral); color: white;
-      padding: 12px 28px; border: none; border-radius: 10px;
-      font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;
-      text-transform: uppercase; letter-spacing: 0.5px;
-      transition: all 0.2s; position: relative;
+      background: linear-gradient(135deg, var(--coral), var(--magenta)); color: white;
+      padding: 14px 32px; border: none; border-radius: 14px;
+      font-size: 13px; font-weight: 900; cursor: pointer; font-family: inherit;
+      text-transform: uppercase; letter-spacing: 1px;
+      transition: all 0.25s; position: relative; z-index: 1;
+      box-shadow: 0 4px 15px rgba(228, 72, 91, 0.3);
     }
-    .share-btn:hover { transform: scale(1.03); }
-    .share-btn:active { transform: scale(0.97); }
+    .share-btn:hover { transform: scale(1.04) translateY(-1px); box-shadow: 0 8px 25px rgba(228, 72, 91, 0.4); }
+    .share-btn:active { transform: scale(0.96); }
 
-    .empty { text-align: center; padding: 48px 16px; color: var(--text-secondary); }
-    .empty-icon { font-size: 56px; margin-bottom: 16px; }
+    .empty { text-align: center; padding: 56px 20px; color: var(--text-secondary); }
+    .empty-icon { font-size: 64px; margin-bottom: 18px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
 
     .date-divider {
-      font-size: 13px; font-weight: 800; color: var(--teal);
-      margin: 24px 0 14px; padding-bottom: 10px;
+      font-size: 14px; font-weight: 900; color: var(--teal);
+      margin: 28px 0 16px; padding-bottom: 12px;
       border-bottom: 2px solid var(--card-border);
-      text-transform: uppercase; letter-spacing: 0.5px;
+      text-transform: uppercase; letter-spacing: 1px;
+      text-shadow: 0 1px 3px rgba(0, 178, 169, 0.2);
     }
-    .date-divider:first-child { margin-top: 4px; }
+    .date-divider:first-child { margin-top: 6px; }
 
-    .player-count { font-size: 11px; color: var(--text-secondary); text-align: center; margin-top: 12px; font-weight: 500; }
+    .player-count { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 14px; font-weight: 600; }
 
     .rules {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 20px; margin-top: 20px; font-size: 13px; color: var(--text-secondary); line-height: 2;
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      padding: 24px; margin-top: 24px; font-size: 14px; color: var(--text-secondary); line-height: 2.2;
+      position: relative; overflow: hidden;
     }
-    .rules strong { color: var(--text); }
+    .rules::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--glass-shine);
+      pointer-events: none;
+    }
+    .rules strong { color: var(--text); font-weight: 800; }
 
     .logout-btn {
-      display: block; margin: 16px auto 0; padding: 10px 18px;
-      background: var(--surface);
-      border: 1px solid var(--card-border); border-radius: 8px;
+      display: block; margin: 14px auto 0; padding: 12px 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border); border-radius: 12px;
       color: var(--text-secondary);
-      font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
-      transition: all 0.2s;
+      font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+      transition: all 0.25s;
     }
-    .logout-btn:hover { border-color: var(--coral); color: var(--coral); }
+    .logout-btn:hover { border-color: var(--coral); color: var(--coral); transform: translateY(-1px); }
+
+    /* === ANGULAR DECORATIVE SHAPES === */
+    .angular-accent {
+      position: absolute;
+      width: 60px; height: 60px;
+      border: 2px solid rgba(255,255,255,0.05);
+      transform: rotate(45deg);
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* === NOTIFICATION BADGE === */
+    .notif-prompt {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .notif-prompt span { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .notif-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--teal);
+      border-radius: 20px;
+      background: rgba(0, 178, 169, 0.1);
+      color: var(--teal);
+      font-size: 11px; font-weight: 800;
+      cursor: pointer; font-family: inherit;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .notif-btn:hover { background: var(--teal); color: #fff; }
+
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    [data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
+
+<!-- Vibrant background blobs -->
+<div class="bg-blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+  <div class="blob blob-5"></div>
+  <div class="blob blob-6"></div>
+</div>
 
 <div id="login-view">
   <div class="header">
@@ -406,7 +722,7 @@
     <div class="input-group">
       <input type="text" id="name-input" placeholder="Choose a unique name" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
     </div>
-    <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;"></p>
+    <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:700;"></p>
     <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
     <p class="player-count" id="player-count"></p>
     <div class="rules">
@@ -439,7 +755,7 @@
   <div class="screen" id="tab-results"></div>
   <div class="screen" id="tab-admin">
     <div class="section-label">Set Results (Admin Only)</div>
-    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Tap the winner after each match. This updates everyone's scores instantly.</p>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;font-weight:500;">Tap the winner after each match. This updates everyone's scores instantly.</p>
     <div id="admin-list"></div>
   </div>
 </div>
@@ -468,6 +784,92 @@ function updateThemeIcons(theme) {
 
 initTheme();
 
+// ========== CELEBRATION MICRO-ANIMATION ==========
+function createCelebration(button) {
+  const rect = button.getBoundingClientRect();
+  const card = button.closest('.match-card');
+  if (!card) return;
+
+  const celebration = document.createElement('div');
+  celebration.className = 'celebration';
+  celebration.style.left = (rect.left - card.getBoundingClientRect().left + rect.width / 2) + 'px';
+  celebration.style.top = (rect.top - card.getBoundingClientRect().top + rect.height / 2) + 'px';
+
+  const colors = ['var(--teal)', 'var(--coral)', 'var(--gold)', 'var(--sky)', 'var(--magenta)', 'var(--green)'];
+  for (let i = 0; i < 12; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const angle = (i / 12) * 360;
+    const distance = 30 + Math.random() * 40;
+    const tx = Math.cos(angle * Math.PI / 180) * distance;
+    const ty = Math.sin(angle * Math.PI / 180) * distance;
+    piece.style.setProperty('--tx', tx + 'px');
+    piece.style.setProperty('--ty', ty + 'px');
+    piece.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    celebration.appendChild(piece);
+  }
+
+  card.appendChild(celebration);
+  setTimeout(() => celebration.remove(), 900);
+}
+
+// ========== RIPPLE EFFECT ==========
+function createRipple(event, button) {
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = button.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = (event.clientX - rect.left - size / 2) + 'px';
+  ripple.style.top = (event.clientY - rect.top - size / 2) + 'px';
+  button.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
+}
+
+// ========== NOTIFICATIONS ==========
+let notificationsEnabled = false;
+let scheduledNotifications = {};
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      notificationsEnabled = true;
+      localStorage.setItem('wc2026_notifs', 'true');
+      scheduleUpcomingNotifications();
+      // Remove the prompt
+      const prompt = document.querySelector('.notif-prompt');
+      if (prompt) prompt.remove();
+    }
+  });
+}
+
+function scheduleUpcomingNotifications() {
+  if (!notificationsEnabled) return;
+  MATCHES.forEach(match => {
+    if (results[match.id]) return;
+    const kickoff = getKickoffTime(match);
+    const fiveMinBefore = kickoff - (5 * 60 * 1000);
+    const now = Date.now();
+    if (fiveMinBefore > now && !scheduledNotifications[match.id]) {
+      const timeout = setTimeout(() => {
+        new Notification('Match Starting Soon!', {
+          body: `${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2} kicks off in 5 minutes!`,
+          icon: '⚽',
+          tag: match.id
+        });
+      }, fiveMinBefore - now);
+      scheduledNotifications[match.id] = timeout;
+    }
+  });
+}
+
+// Check if notifications were previously enabled
+if (localStorage.getItem('wc2026_notifs') === 'true' && Notification.permission === 'granted') {
+  notificationsEnabled = true;
+}
+
 // ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
   apiKey: "AIzaSyDDuFB5d2R9gws79kX117mGHJvxZRIbwNk",
@@ -483,9 +885,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ========== REAL FIFA WORLD CUP 2026 FIXTURES ==========
-// Parse IST time string to get kickoff timestamp for locking predictions
 function getKickoffTime(match) {
-  // Parse "Jun 14, 12:30 AM IST" or "Jun 14, 10:30 PM IST" from time field
   const timeStr = match.time;
   const parts = timeStr.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)\s+(AM|PM)\s+IST/);
   if (!parts) return 0;
@@ -497,7 +897,6 @@ function getKickoffTime(match) {
   const ampm = parts[5];
   if (ampm === 'AM' && hours === 12) hours = 0;
   if (ampm === 'PM' && hours !== 12) hours += 12;
-  // Create date in IST (UTC+5:30)
   const d = new Date(Date.UTC(2026, month, day, hours - 5, mins - 30));
   return d.getTime();
 }
@@ -602,6 +1001,8 @@ function initListeners() {
   db.ref('results').on('value', snap => {
     results = snap.val() || {};
     render();
+    // Re-schedule notifications when results change
+    if (notificationsEnabled) scheduleUpcomingNotifications();
   });
 
   db.ref('players').on('value', snap => {
@@ -626,10 +1027,8 @@ function joinGame() {
 
   db.ref('players/' + key).once('value', snap => {
     if (snap.exists()) {
-      // Name exists — check if it's the same person returning
       const stored = snap.val();
       if (stored.name === name) {
-        // Welcome back
         currentUser = key;
         localStorage.setItem('wc2026_user', key);
         localStorage.setItem('wc2026_displayName', name);
@@ -639,7 +1038,6 @@ function joinGame() {
         errorEl.style.display = 'block';
       }
     } else {
-      // New player
       currentUser = key;
       localStorage.setItem('wc2026_user', key);
       localStorage.setItem('wc2026_displayName', name);
@@ -660,6 +1058,8 @@ function showApp() {
   document.getElementById('display-name').textContent = displayName;
   document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
   render();
+  // Schedule notifications after login
+  if (notificationsEnabled) scheduleUpcomingNotifications();
 }
 
 function changeName() {
@@ -682,7 +1082,6 @@ function changeName() {
       return;
     }
 
-    // Move predictions to new key
     const oldKey = currentUser;
     db.ref('predictions').once('value', predSnap => {
       const allPreds = predSnap.val() || {};
@@ -692,12 +1091,11 @@ function changeName() {
         if (k.startsWith(oldKey + '_')) {
           const matchPart = k.substring(oldKey.length + 1);
           updates[newKey + '_' + matchPart] = allPreds[k];
-          updates[k] = null; // delete old
+          updates[k] = null;
         }
       });
 
       db.ref('predictions').update(updates).then(() => {
-        // Create new player, remove old
         db.ref('players/' + newKey).set({ name: trimmed, joined: new Date().toISOString() });
         db.ref('players/' + oldKey).remove();
 
@@ -749,16 +1147,25 @@ function renderPredict() {
   });
 
   let html = '';
+
+  // Notification prompt
+  if (!notificationsEnabled && 'Notification' in window && Notification.permission !== 'denied') {
+    html += `<div class="notif-prompt">
+      <span>Get notified 5 min before kickoff</span>
+      <button class="notif-btn" onclick="requestNotifPermission()">Enable</button>
+    </div>`;
+  }
+
   const dates = Object.keys(grouped).sort();
 
   if (dates.length === 0) {
-    html = '<div class="empty"><div class="empty-icon">🎉</div><p>All matches completed!<br>Check the Leaderboard for final standings.</p></div>';
+    html += '<div class="empty"><div class="empty-icon">🎉</div><p style="font-size:16px;font-weight:600;">All matches completed!<br><span style="font-weight:400;font-size:14px;">Check the Leaderboard for final standings.</span></p></div>';
   } else {
     dates.forEach(date => {
       const d = new Date(date + 'T00:00:00');
       const isToday = date === today;
-      const label = isToday ? '📅 Today' : d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
-      html += `<div class="date-divider">${label}</div>`;
+      const label = isToday ? 'Today' : d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+      html += `<div class="date-divider">${isToday ? '🔴 ' : ''}${label}</div>`;
 
       grouped[date].forEach(match => {
         const key = currentUser + '_' + match.id;
@@ -768,6 +1175,7 @@ function renderPredict() {
 
         html += `
           <div class="match-card ${isPredicted ? 'predicted' : ''} ${locked && !isPredicted ? 'locked' : ''}">
+            <div class="team-wash" style="background: linear-gradient(135deg, rgba(0,178,169,0.3) 0%, rgba(228,72,91,0.2) 100%);"></div>
             <div class="match-meta">
               <span class="group-tag">${match.group}</span>
               <div class="time">${match.time}${locked ? ' 🔒' : ''}</div>
@@ -787,13 +1195,13 @@ function renderPredict() {
             ${locked
               ? isPredicted
                 ? `<div class="prediction-status">✓ Predicted: ${userPick} 🔒</div>`
-                : `<div class="prediction-status" style="color:var(--text-dim);">🔒 Prediction locked — match started</div>`
+                : `<div class="prediction-status" style="color:var(--text-secondary);">🔒 Prediction locked — match started</div>`
               : `<div class="predict-btns">
-                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
-                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="predict('${match.id}','Draw')">Draw</button>
-                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
+                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1}')">${match.team1}</button>
+                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">Draw</button>
+                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2}')">${match.team2}</button>
                 </div>
-                ${isPredicted ? '<div class="prediction-status" style="font-size:11px;">Tap another option to change your pick</div>' : ''}`
+                ${isPredicted ? '<div class="prediction-status" style="font-size:11px;color:var(--text-secondary);">Tap another option to change your pick</div>' : ''}`
             }
           </div>`;
       });
@@ -824,7 +1232,6 @@ function renderLeaderboard() {
   });
 
   Object.keys(predictions).forEach(key => {
-    // Match IDs look like "md1_03", so find the player key by matching against known players
     let playerKey = '';
     let matchId = '';
     for (const pk of Object.keys(players)) {
@@ -856,14 +1263,15 @@ function renderLeaderboard() {
   let html = `<div class="section-label">Standings — ${totalResults} match${totalResults !== 1 ? 'es' : ''} decided</div>`;
 
   if (sorted.length === 0) {
-    html += '<div class="empty"><div class="empty-icon">📊</div><p>No players yet.</p></div>';
+    html += '<div class="empty"><div class="empty-icon">📊</div><p style="font-size:15px;font-weight:600;">No players yet.</p></div>';
   } else {
     sorted.forEach(([name, stats], i) => {
       const cls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
-      const you = name === currentUser ? '<span class="lb-you">(You)</span>' : '';
+      const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
+      const you = name === displayName ? '<span class="lb-you">(You)</span>' : '';
       html += `
         <div class="lb-item ${cls}">
-          <div class="rank">${i + 1}</div>
+          <div class="rank">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
           <div class="lb-name">${name}${you}</div>
           <div class="lb-stats">
             <div class="lb-pts">${stats.points} pts</div>
@@ -881,7 +1289,7 @@ function renderResults() {
   const completed = MATCHES.filter(m => results[m.id]);
 
   if (completed.length === 0) {
-    container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p>No results yet.<br>Check back after matches are played!</p></div>';
+    container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p style="font-size:15px;font-weight:600;">No results yet.<br><span style="font-weight:400;font-size:13px;">Check back after matches are played!</span></p></div>';
     return;
   }
 
@@ -892,24 +1300,33 @@ function renderResults() {
     const userPick = predictions[userKey];
     const isCorrect = userPick === winner;
 
+    // Determine score display
+    const isDraw = winner === 'Draw';
+    const team1Won = winner === match.team1;
+    const team2Won = winner === match.team2;
+
     html += `
       <div class="result-card">
         <div class="result-teams">
-          <div class="result-team ${winner === match.team1 ? 'winner' : ''}">
+          <div class="result-team ${team1Won ? 'winner' : ''}">
             <span class="flag">${match.flag1}</span>
-            <span>${match.team1}</span>
+            <span style="font-size:15px;font-weight:${team1Won ? 900 : 700};">${match.team1}</span>
           </div>
-          <div class="result-vs">vs</div>
-          <div class="result-team ${winner === match.team2 ? 'winner' : ''}">
-            <span>${match.team2}</span>
+          <div class="result-score">
+            <div class="score-display" style="font-size:12px;font-weight:800;color:${isDraw ? 'var(--gold)' : team1Won ? 'var(--green)' : team2Won ? 'var(--green)' : 'var(--text-secondary)'};">
+              ${isDraw ? 'DRAW' : 'WIN'}
+            </div>
+          </div>
+          <div class="result-team ${team2Won ? 'winner' : ''}" style="justify-content:flex-end;">
+            <span style="font-size:15px;font-weight:${team2Won ? 900 : 700};">${match.team2}</span>
             <span class="flag">${match.flag2}</span>
           </div>
         </div>
         <div class="result-bottom">
-          <span>Your pick: ${userPick || '—'}</span>
+          <span>Your pick: <strong>${userPick || '—'}</strong></span>
           ${userPick
             ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
-            : '<span style="color:var(--text-dim)">No prediction</span>'
+            : '<span style="color:var(--text-secondary)">No prediction</span>'
           }
         </div>
       </div>`;
@@ -927,7 +1344,7 @@ function renderAdmin() {
     const result = results[match.id];
     html += `
       <div class="admin-card">
-        <h4>${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2} <span style="font-weight:400;color:var(--text-dim);font-size:10px;">${match.time}</span></h4>
+        <h4>${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2} <span style="font-weight:400;color:var(--text-secondary);font-size:10px;">${match.time}</span></h4>
         <div class="admin-btns">
           <button class="admin-btn ${result === match.team1 ? 'done' : ''}" onclick="setResult('${match.id}','${match.team1}')">${match.team1}</button>
           <button class="admin-btn ${result === 'Draw' ? 'done' : ''}" onclick="setResult('${match.id}','Draw')">Draw</button>
@@ -940,6 +1357,13 @@ function renderAdmin() {
 }
 
 // ========== ACTIONS ==========
+function handlePredict(event, matchId, pick) {
+  const button = event.currentTarget;
+  createRipple(event, button);
+  createCelebration(button);
+  predict(matchId, pick);
+}
+
 function predict(matchId, pick) {
   const match = MATCHES.find(m => m.id === matchId);
   if (match && isMatchLocked(match)) {
