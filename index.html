@@ -616,15 +616,16 @@ function renderPredict() {
                 <div class="team-name">${match.team2}</div>
               </div>
             </div>
-            ${isPredicted
-              ? `<div class="prediction-status">✓ Predicted: ${userPick}${locked ? ' (locked)' : ''}</div>`
-              : locked
-                ? `<div class="prediction-status" style="color:var(--text-dim);">🔒 Prediction locked — match started</div>`
-                : `<div class="predict-btns">
-                    <button class="predict-btn" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
-                    <button class="predict-btn" onclick="predict('${match.id}','Draw')">Draw</button>
-                    <button class="predict-btn" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
-                  </div>`
+            ${locked
+              ? isPredicted
+                ? `<div class="prediction-status">✓ Predicted: ${userPick} 🔒</div>`
+                : `<div class="prediction-status" style="color:var(--text-dim);">🔒 Prediction locked — match started</div>`
+              : `<div class="predict-btns">
+                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
+                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="predict('${match.id}','Draw')">Draw</button>
+                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
+                </div>
+                ${isPredicted ? '<div class="prediction-status" style="font-size:11px;">Tap another option to change your pick</div>' : ''}`
             }
           </div>`;
       });
