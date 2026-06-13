@@ -524,7 +524,9 @@
     .lb-name { flex: 1; font-size: 15px; font-weight: 800; position: relative; z-index: 1; }
     .lb-you { font-size: 9px; color: var(--teal); margin-left: 6px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
     .lb-stats { text-align: right; position: relative; z-index: 1; }
-    .lb-pts { font-size: 20px; font-weight: 900; color: var(--coral); }
+    .lb-pts { font-size: 20px; font-weight: 900; color: #fff; }
+    [data-theme="light"] .lb-pts { color: #1A1A2E; }
+    .lb-pts.gained { color: var(--green); }
     .lb-record { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
 
     .highlight-banner {
@@ -1444,12 +1446,14 @@ function renderLeaderboard() {
       // Streak badge
       const streakBadge = stats.streak >= 2 ? `<span style="font-size:11px;margin-left:6px;">🔥${stats.streak}</span>` : '';
 
+      const pointsGained = prevRank !== undefined && prevRank > (i + 1);
+
       html += `
         <div class="lb-item ${cls}">
           <div class="rank">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
           <div class="lb-name">${stats.name}${you}${arrow}${streakBadge}</div>
           <div class="lb-stats">
-            <div class="lb-pts">${stats.points} pts</div>
+            <div class="lb-pts ${pointsGained ? 'gained' : ''}">${stats.points} pts</div>
             <div class="lb-record">${stats.correct}/${stats.total} correct</div>
           </div>
         </div>`;
