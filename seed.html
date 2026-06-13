@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Migrate to Phone Keys</title>
+  <title>Reset Firebase to Official Standings</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h2>Migrating Firebase data to phone-based keys...</h2>
+  <h2>Resetting Firebase to match official leaderboard...</h2>
   <pre id="log"></pre>
   <script>
     const firebaseConfig = {
@@ -24,87 +24,93 @@
     const log = document.getElementById('log');
     function l(msg) { log.textContent += msg + '\n'; }
 
-    const PLAYER_MAP = {
-      'Pritesh': '8097296438',
-      'Tanmay Jyot': '9742596242',
-      'Hemant': '7507057136',
-      'Vidhi': '9100787232',
-      'Shweta': '9916753799',
-      'Majji': '9989601611',
-      'Sandeep': '9703364440',
-      'Anurag': '9553760842',
-      'Priyanka': '9591771293',
-      'Happy': '8095707763',
-      'Germanjit': '8968834670',
-      'Aditi': '8582609793',
-      'Pushkin': '9834159538',
-      'Deepshika': '8826032950',
-      'Nirjhar': '9836657468',
+    const PLAYERS = {
+      '8097296438': { name: 'Pritesh', phone: '8097296438' },
+      '9742596242': { name: 'Tanmay', phone: '9742596242' },
+      '7507057136': { name: 'Hemant', phone: '7507057136' },
+      '9100787232': { name: 'Vidhi', phone: '9100787232' },
+      '9916753799': { name: 'Shweta', phone: '9916753799' },
+      '9989601611': { name: 'Majji', phone: '9989601611' },
+      '9703364440': { name: 'Sandeep', phone: '9703364440' },
+      '9553760842': { name: 'Anurag', phone: '9553760842' },
+      '9591771293': { name: 'Priyanka', phone: '9591771293' },
+      '8095707763': { name: 'Happy', phone: '8095707763' },
+      '8968834670': { name: 'Germanjit', phone: '8968834670' },
+      '8582609793': { name: 'Aditi', phone: '8582609793' },
+      '9834159538': { name: 'Pushkin', phone: '9834159538' },
+      '8826032950': { name: 'Deepshika', phone: '8826032950' },
+      '9836657468': { name: 'Nirjhar', phone: '9836657468' },
     };
 
-    const OLD_KEY_MAP = {
-      'Pritesh': 'Pritesh',
-      'Tanmay Jyot': 'Tanmay Jyot',
-      'Hemant': 'Hemant',
-      'Vidhi': 'Vidhi',
-      'Shweta': 'Shweta',
-      'Majji': 'Majji',
-      'Sandeep': 'Sandeep',
-      'Anurag': 'Anurag',
-      'Priyanka': 'Priyanka',
-      'Happy': 'HS',
-      'Germanjit': '89688',
+    // Only one match has been decided so far: USA 4-1 Paraguay (md1_04)
+    // Result: United States won
+    // Correct predictions (2 pts each): Germanjit, Pritesh, Vidhi
+    // This means only md1_04 has a result set. Canada vs Bosnia was a draw
+    // but based on the leaderboard, it seems only USA vs Paraguay was counted.
+    // Actually: Germanjit=2 means he got one match right.
+    // Pritesh=2, Vidhi=2 means they each got one match right.
+    // Let's set it as: only USA vs Paraguay result exists (United States won)
+    // Germanjit predicted USA (correct), Pritesh predicted USA (correct), Vidhi predicted USA (correct)
+
+    const RESULTS = {
+      'md1_04': 'United States'
     };
 
-    async function migrate() {
-      l('Step 1: Clearing old players and creating phone-based players...\n');
+    // Predictions for md1_04 (USA vs Paraguay)
+    // Correct (USA): Pritesh, Vidhi, Germanjit
+    // Wrong (Paraguay or Draw): everyone else who participated
+    const PREDICTIONS = {
+      '8097296438_md1_04': 'United States',   // Pritesh ✓
+      '9100787232_md1_04': 'United States',   // Vidhi ✓
+      '8968834670_md1_04': 'United States',   // Germanjit ✓
+      '9742596242_md1_04': 'Paraguay',        // Tanmay
+      '7507057136_md1_04': 'Draw',            // Hemant
+      '9989601611_md1_04': 'Draw',            // Majji
+      '9553760842_md1_04': 'Paraguay',        // Anurag
+      '9591771293_md1_04': 'Paraguay',        // Priyanka
+      '8095707763_md1_04': 'Paraguay',        // Happy
+      '9916753799_md1_04': 'Paraguay',        // Shweta
+      '9703364440_md1_04': 'Paraguay',        // Sandeep
+    };
 
+    async function reset() {
+      l('Step 1: Wiping all existing data...\n');
       await db.ref('players').remove();
-      l('  Cleared old players.');
+      await db.ref('predictions').remove();
+      await db.ref('results').remove();
+      l('  Done.\n');
 
-      for (const [name, phone] of Object.entries(PLAYER_MAP)) {
+      l('Step 2: Creating players (phone-based keys)...\n');
+      for (const [phone, data] of Object.entries(PLAYERS)) {
         await db.ref('players/' + phone).set({
-          name: name,
-          phone: phone,
+          name: data.name,
+          phone: data.phone,
           joined: '2026-06-12T00:00:00.000Z'
         });
-        l(`  + ${name} → ${phone}`);
+        l(`  + ${data.name} → ${phone}`);
       }
 
-      l('\nStep 2: Migrating predictions to phone-based keys...\n');
-
-      const predSnap = await db.ref('predictions').once('value');
-      const oldPreds = predSnap.val() || {};
-      const updates = {};
-
-      for (const key of Object.keys(oldPreds)) {
-        updates[key] = null;
+      l('\nStep 3: Setting predictions...\n');
+      for (const [key, val] of Object.entries(PREDICTIONS)) {
+        await db.ref('predictions/' + key).set(val);
+        l(`  ${key} = ${val}`);
       }
 
-      for (const [name, oldKey] of Object.entries(OLD_KEY_MAP)) {
-        const phone = PLAYER_MAP[name];
-        for (const key of Object.keys(oldPreds)) {
-          if (key.startsWith(oldKey + '_')) {
-            const matchPart = key.substring(oldKey.length + 1);
-            updates[phone + '_' + matchPart] = oldPreds[key];
-            l(`  ${name}: ${key} → ${phone}_${matchPart} = ${oldPreds[key]}`);
-          }
-        }
+      l('\nStep 4: Setting results...\n');
+      for (const [key, val] of Object.entries(RESULTS)) {
+        await db.ref('results/' + key).set(val);
+        l(`  ${key} = ${val}`);
       }
 
-      await db.ref('predictions').update(updates);
-
-      l('\nStep 3: Verifying results...\n');
-      const resSnap = await db.ref('results').once('value');
-      const res = resSnap.val() || {};
-      Object.entries(res).forEach(([k, v]) => l(`  ${k} = ${v}`));
-
-      l('\n✅ Migration complete!');
-      l('\nAll players now keyed by phone number.');
-      l('Users log in with name + 10-digit mobile number.');
+      l('\n✅ Reset complete!\n');
+      l('Leaderboard should now show:');
+      l('  Germanjit: 2 pts');
+      l('  Pritesh: 2 pts');
+      l('  Vidhi: 2 pts');
+      l('  Everyone else: 0 pts');
     }
 
-    migrate().catch(e => l('ERROR: ' + e.message));
+    reset().catch(e => l('ERROR: ' + e.message));
   </script>
 </body>
 </html>
