@@ -1392,33 +1392,25 @@ function renderResults() {
     const team2Won = winner === match.team2;
 
     html += `
-      <div class="match-card ${hasResult ? 'predicted' : ''}">
-        <div class="team-wash" style="background: linear-gradient(135deg, rgba(0,178,169,0.3) 0%, rgba(228,72,91,0.2) 100%);"></div>
-        <div class="match-meta">
-          <span class="group-tag">${match.group}</span>
-          <div class="time">${match.time}</div>
-          ${match.venue ? `<div class="venue">${match.venue}</div>` : ''}
-        </div>
-        <div class="match-teams">
+      <div class="match-card" style="padding:14px 18px;">
+        <div class="match-teams" style="margin:0;">
           <div class="team">
-            <div class="team-flag">${match.flag1}</div>
+            <div class="team-flag" style="font-size:36px;">${match.flag1}</div>
             <div class="team-name" style="${team1Won ? 'color:var(--green);' : ''}">${match.team1}</div>
           </div>
-          <div class="vs" style="font-size:12px;font-weight:900;color:${!hasResult ? 'var(--text-secondary)' : isDraw ? 'var(--gold)' : 'var(--green)'};">${!hasResult ? 'LIVE' : isDraw ? 'DRAW' : 'WIN'}</div>
+          <div class="vs" style="font-size:11px;font-weight:900;color:${!hasResult ? 'var(--text-secondary)' : isDraw ? 'var(--gold)' : 'var(--green)'};">${hasResult ? (isDraw ? 'DRAW' : 'WIN') : 'VS'}</div>
           <div class="team">
-            <div class="team-flag">${match.flag2}</div>
+            <div class="team-flag" style="font-size:36px;">${match.flag2}</div>
             <div class="team-name" style="${team2Won ? 'color:var(--green);' : ''}">${match.team2}</div>
           </div>
         </div>
-        <div class="result-bottom">
+        ${hasResult ? `<div class="result-bottom" style="margin-top:10px;padding-top:10px;">
           <span>Your pick: <strong>${userPick || '—'}</strong></span>
-          ${hasResult
-            ? userPick
-              ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
-              : '<span style="color:var(--text-secondary)">No prediction</span>'
-            : '<span style="color:var(--gold);font-weight:700;">Awaiting result</span>'
+          ${userPick
+            ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
+            : '<span style="color:var(--text-secondary)">No prediction</span>'
           }
-        </div>
+        </div>` : ''}
       </div>`;
   });
 
