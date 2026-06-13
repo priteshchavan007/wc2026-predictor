@@ -940,6 +940,18 @@
           <span class="settings-icon">✏️</span>
           <span>Change Name</span>
         </div>
+        <div class="settings-item admin-only" onclick="renameGroup()" style="display:none;">
+          <span class="settings-icon">📝</span>
+          <span>Rename Group</span>
+        </div>
+        <div class="settings-item admin-only" onclick="manageMembers()" style="display:none;">
+          <span class="settings-icon">👥</span>
+          <span>Manage Members</span>
+        </div>
+        <div class="settings-item" onclick="leaveGroup()" style="color:var(--red);">
+          <span class="settings-icon">🚪</span>
+          <span>Leave Group</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1331,6 +1343,12 @@ function initListeners() {
     groupInfo = snap.val();
     const groupNameEl = document.getElementById('group-name-display');
     if (groupNameEl && groupInfo) groupNameEl.textContent = groupInfo.name;
+
+    // Show admin options if user is creator
+    const isGroupAdmin = groupInfo && groupInfo.createdBy === currentUser;
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = isGroupAdmin ? '' : 'none';
+    });
   });
 }
 
@@ -1436,12 +1454,77 @@ function selectGroup(groupId) {
   document.getElementById('group-view').style.display = 'none';
   showApp();
   initListeners();
+  // Track last activity for 30-day cleanup
+  db.ref('groups/' + groupId + '/info/lastActivity').set(new Date().toISOString());
 }
 
 function switchGroup() {
   closeSettings();
   detachListeners();
   showGroupSelection();
+}
+
+function leaveGroup() {
+  closeSettings();
+  if (!currentGroup || !currentUser) return;
+  if (!confirm('Are you sure you want to leave this group?')) return;
+
+  const updates = {};
+  updates['groups/' + currentGroup + '/members/' + currentUser] = null;
+  updates['groups/' + currentGroup + '/players/' + currentUser] = null;
+  updates['users/' + currentUser + '/groups/' + currentGroup] = null;
+
+  db.ref().update(updates).then(() => {
+    localStorage.removeItem('wc2026_group');
+    currentGroup = null;
+    detachListeners();
+    afterLogin();
+  });
+}
+
+function renameGroup() {
+  closeSettings();
+  if (!groupInfo) return;
+  const newName = prompt('Enter new group name:', groupInfo.name);
+  if (!newName || !newName.trim() || newName.trim() === groupInfo.name) return;
+
+  db.ref('groups/' + currentGroup + '/info/name').set(newName.trim());
+  groupInfo.name = newName.trim();
+  const el = document.getElementById('group-name-display');
+  if (el) el.textContent = newName.trim();
+}
+
+function manageMembers() {
+  closeSettings();
+  if (!players || !groupInfo) return;
+
+  let html = '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:22px;font-weight:900;">Manage Members</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">' + groupInfo.name + '</div></div>';
+
+  Object.entries(players).forEach(([phone, data]) => {
+    if (phone === currentUser) return;
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--card-border);">
+      <span style="font-size:14px;font-weight:600;">${data.name}</span>
+      <button onclick="removeMember('${phone}')" style="padding:6px 12px;border:1px solid var(--red);border-radius:8px;background:transparent;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Remove</button>
+    </div>`;
+  });
+
+  html += '<button onclick="closeProfile()" style="width:100%;margin-top:20px;padding:12px;border:1px solid var(--glass-border);border-radius:10px;background:transparent;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Close</button>';
+
+  document.getElementById('profile-content').innerHTML = html;
+  document.getElementById('profile-modal').style.display = 'flex';
+}
+
+function removeMember(phone) {
+  if (!confirm('Remove this member from the group?')) return;
+
+  const updates = {};
+  updates['groups/' + currentGroup + '/members/' + phone] = null;
+  updates['groups/' + currentGroup + '/players/' + phone] = null;
+  updates['users/' + phone + '/groups/' + currentGroup] = null;
+
+  db.ref().update(updates).then(() => {
+    manageMembers();
+  });
 }
 
 function shareGroupLink() {
@@ -2009,12 +2092,7 @@ function shareGame() {
 }
 
 // ========== ADMIN ACCESS ==========
-const ADMIN_KEY = 'pritesh2026';
-const isAdmin = new URLSearchParams(window.location.search).get('admin') === ADMIN_KEY;
-
-if (isAdmin) {
-  document.getElementById('admin-tab').style.display = '';
-}
+const isAdmin = false; // Admin result override removed — results are automatic via API
 
 // ========== LIVE SCORES API ==========
 let liveScores = {};
