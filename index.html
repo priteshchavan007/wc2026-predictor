@@ -527,6 +527,17 @@
     .lb-pts { font-size: 20px; font-weight: 900; color: var(--coral); }
     .lb-record { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
 
+    .highlight-banner {
+      background: var(--card-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--gold);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
     /* === RESULTS === */
     .result-card {
       background: var(--card-bg);
@@ -1138,6 +1149,10 @@ function initListeners() {
     if (el) el.textContent = visibleCount > 0 ? `${visibleCount} player${visibleCount > 1 ? 's' : ''} already joined!` : '';
     render();
   });
+
+  db.ref('rankHistory').on('value', snap => {
+    previousRanks = snap.val() || {};
+  });
 }
 
 // ========== AUTH ==========
@@ -1317,14 +1332,17 @@ function renderPredict() {
   container.innerHTML = html;
 }
 
-function renderLeaderboard() {
-  const container = document.getElementById('tab-leaderboard');
-  const scores = {};
+let previousRanks = {};
 
+function calculateScores() {
+  const scores = {};
   Object.keys(players).forEach(key => {
     const name = players[key].name || key;
-    scores[key] = { points: 0, correct: 0, total: 0, name: name };
+    scores[key] = { points: 0, correct: 0, total: 0, name: name, streak: 0 };
   });
+
+  // Get match IDs sorted by date for streak calculation
+  const decidedMatches = MATCHES.filter(m => results[m.id]).map(m => m.id);
 
   Object.keys(predictions).forEach(key => {
     let playerKey = '';
@@ -1350,10 +1368,62 @@ function renderLeaderboard() {
     }
   });
 
+  // Calculate streaks (consecutive correct from most recent)
+  Object.keys(scores).forEach(playerKey => {
+    let streak = 0;
+    for (let i = decidedMatches.length - 1; i >= 0; i--) {
+      const mId = decidedMatches[i];
+      const predKey = playerKey + '_' + mId;
+      if (predictions[predKey] && predictions[predKey] === results[mId]) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    scores[playerKey].streak = streak;
+  });
+
+  return scores;
+}
+
+function renderLeaderboard() {
+  const container = document.getElementById('tab-leaderboard');
+  const scores = calculateScores();
+
   const sorted = Object.entries(scores).sort((a, b) => b[1].points - a[1].points || b[1].correct - a[1].correct);
   const totalResults = Object.keys(results).length;
 
-  let html = `<div class="section-label">Standings — ${totalResults} match${totalResults !== 1 ? 'es' : ''} decided</div>`;
+  // Calculate rank movements
+  const currentRanks = {};
+  sorted.forEach(([key], i) => { currentRanks[key] = i + 1; });
+
+  // Find best predictor of last match
+  const decidedMatches = MATCHES.filter(m => results[m.id]);
+  let lastMatchWinners = [];
+  if (decidedMatches.length > 0) {
+    const lastMatch = decidedMatches[decidedMatches.length - 1];
+    Object.keys(players).forEach(pk => {
+      const predKey = pk + '_' + lastMatch.id;
+      if (predictions[predKey] === results[lastMatch.id]) {
+        lastMatchWinners.push(players[pk].name || pk);
+      }
+    });
+  }
+
+  let html = '';
+
+  // Daily highlight banner
+  if (lastMatchWinners.length > 0 && decidedMatches.length > 0) {
+    const lastMatch = decidedMatches[decidedMatches.length - 1];
+    const matchLabel = `${lastMatch.team1} vs ${lastMatch.team2}`;
+    html += `<div class="highlight-banner">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:4px;">⭐ Last Match Heroes</div>
+      <div style="font-size:13px;font-weight:600;">${lastMatchWinners.join(', ')}</div>
+      <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">Predicted ${matchLabel} correctly</div>
+    </div>`;
+  }
+
+  html += `<div class="section-label">Standings — ${totalResults} match${totalResults !== 1 ? 'es' : ''} decided</div>`;
 
   if (sorted.length === 0) {
     html += '<div class="empty"><div class="empty-icon">📊</div><p style="font-size:15px;font-weight:600;">No players yet.</p></div>';
@@ -1361,10 +1431,23 @@ function renderLeaderboard() {
     sorted.forEach(([playerKey, stats], i) => {
       const cls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
       const you = playerKey === currentUser ? '<span class="lb-you">(You)</span>' : '';
+
+      // Rank movement arrow
+      let arrow = '';
+      const prevRank = previousRanks[playerKey];
+      if (prevRank !== undefined) {
+        const diff = prevRank - (i + 1);
+        if (diff > 0) arrow = `<span style="color:var(--green);font-size:11px;font-weight:800;margin-left:6px;">▲${diff}</span>`;
+        else if (diff < 0) arrow = `<span style="color:var(--red);font-size:11px;font-weight:800;margin-left:6px;">▼${Math.abs(diff)}</span>`;
+      }
+
+      // Streak badge
+      const streakBadge = stats.streak >= 2 ? `<span style="font-size:11px;margin-left:6px;">🔥${stats.streak}</span>` : '';
+
       html += `
         <div class="lb-item ${cls}">
           <div class="rank">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
-          <div class="lb-name">${stats.name}${you}</div>
+          <div class="lb-name">${stats.name}${you}${arrow}${streakBadge}</div>
           <div class="lb-stats">
             <div class="lb-pts">${stats.points} pts</div>
             <div class="lb-record">${stats.correct}/${stats.total} correct</div>
@@ -1374,6 +1457,16 @@ function renderLeaderboard() {
   }
 
   container.innerHTML = html;
+
+  // Save current ranks for next comparison
+  db.ref('rankHistory').once('value', snap => {
+    previousRanks = snap.val() || {};
+  });
+
+  // Store current ranks
+  if (isAdmin && Object.keys(currentRanks).length > 0) {
+    db.ref('rankHistory').set(currentRanks);
+  }
 }
 
 function renderResults() {
