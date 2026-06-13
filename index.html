@@ -1004,7 +1004,7 @@ function scheduleUpcomingNotifications() {
 }
 
 // Check if notifications were previously enabled
-if (localStorage.getItem('wc2026_notifs') === 'true' && Notification.permission === 'granted') {
+if (localStorage.getItem('wc2026_notifs') === 'true' && 'Notification' in window && Notification.permission === 'granted') {
   notificationsEnabled = true;
 }
 
@@ -1286,7 +1286,8 @@ function showApp() {
   document.getElementById('app-view').style.display = 'block';
   const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
   document.getElementById('display-name').textContent = displayName;
-  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+  const headerDateEl = document.getElementById('header-date');
+  if (headerDateEl) headerDateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
   render();
   // Schedule notifications after login
   if (notificationsEnabled) scheduleUpcomingNotifications();
@@ -1321,12 +1322,16 @@ function switchTab(tab) {
 }
 
 // ========== RENDER ==========
+let renderTimeout;
 function render() {
   if (!currentUser) return;
-  renderPredict();
-  renderLeaderboard();
-  renderResults();
-  renderAdmin();
+  clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(() => {
+    renderPredict();
+    renderLeaderboard();
+    renderResults();
+    renderAdmin();
+  }, 50);
 }
 
 function renderPredict() {
@@ -1391,14 +1396,14 @@ function renderPredict() {
             </div>
             ${canPredict
               ? `<div class="predict-btns">
-                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1}')">${match.team1}</button>
+                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
                   <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">Draw</button>
-                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2}')">${match.team2}</button>
+                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
                 </div>
                 ${isPredicted ? '<div class="prediction-status" style="font-size:11px;color:var(--text-secondary);">Tap another option to change your pick</div>' : ''}`
               : isPredicted
                 ? `<div class="prediction-status">✓ Predicted: ${userPick}</div>`
-                : ''
+                : `<div class="prediction-status" style="font-size:11px;color:var(--text-secondary);">Predictions open 24hrs before kickoff</div>`
             }
           </div>`;
       });
@@ -1433,7 +1438,7 @@ function calculateScores() {
     for (const pk of Object.keys(players)) {
       if (key.startsWith(pk + '_')) {
         const candidate = key.substring(pk.length + 1);
-        if (candidate.startsWith('md')) {
+        if (candidate.startsWith('md') || candidate.startsWith('api_')) {
           playerKey = pk;
           matchId = candidate;
           break;
@@ -1552,12 +1557,7 @@ function renderLeaderboard() {
 
   container.innerHTML = html;
 
-  // Save current ranks for next comparison
-  db.ref('rankHistory').once('value', snap => {
-    previousRanks = snap.val() || {};
-  });
-
-  // Store current ranks
+  // Store current ranks (admin only, updates comparison for other users)
   if (isAdmin && Object.keys(currentRanks).length > 0) {
     db.ref('rankHistory').set(currentRanks);
   }
@@ -1692,7 +1692,6 @@ if (isAdmin) {
 }
 
 // ========== LIVE SCORES API ==========
-const API_TOKEN = '49b916e7852b422187139132b9cb6ad7';
 let liveScores = {};
 
 async function fetchLiveScores() {
