@@ -143,22 +143,32 @@
     }
 
     .header {
-      padding: 18px 16px 12px;
-      text-align: center;
+      padding: 14px 16px 10px;
       position: relative;
     }
 
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .header-title {
+      text-align: center;
+      position: relative; z-index: 1;
+    }
+
     .header h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 900;
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: var(--text);
-      position: relative; z-index: 1;
     }
     .header p {
-      font-size: 11px; opacity: 0.7; margin-top: 3px; color: var(--text);
-      font-weight: 500; position: relative; z-index: 1;
+      font-size: 11px; opacity: 0.7; margin-top: 2px; color: var(--text);
+      font-weight: 500;
       letter-spacing: 0.5px;
     }
 
@@ -167,17 +177,16 @@
       background: rgba(255,255,255,0.1);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      padding: 6px 14px; border-radius: 20px;
+      padding: 6px 12px; border-radius: 20px;
       font-size: 11px; font-weight: 700; color: var(--text);
-      position: absolute; right: 12px; top: 18px; z-index: 2;
       border: 1px solid var(--glass-border);
+      flex-shrink: 0;
     }
     .user-badge .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; box-shadow: 0 0 6px var(--green); }
 
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 
     .theme-toggle {
-      position: absolute; left: 12px; top: 18px; z-index: 2;
       background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
       width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
@@ -185,6 +194,7 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       transition: transform 0.3s, background 0.3s;
+      flex-shrink: 0;
     }
     .theme-toggle:hover { background: rgba(255,255,255,0.2); }
     .theme-toggle:active { transform: scale(0.88) rotate(20deg); }
@@ -809,10 +819,14 @@
 <div id="app-view" style="display:none;">
   <div class="sticky-top">
     <div class="header">
-      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☀️</button>
-      <h1>⚽ FIFA World Cup 2026</h1>
-      <p>Prediction Game</p>
-      <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
+      <div class="header-top">
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☀️</button>
+        <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
+      </div>
+      <div class="header-title">
+        <h1>⚽ FIFA World Cup 2026</h1>
+        <p>Prediction Game</p>
+      </div>
     </div>
     <div class="tabs" id="tab-bar">
     <div class="tab active" data-tab="predict" onclick="switchTab('predict')">Predict</div>
