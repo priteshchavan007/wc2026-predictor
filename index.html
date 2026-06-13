@@ -413,9 +413,10 @@ function initListeners() {
 
   db.ref('players').on('value', snap => {
     players = snap.val() || {};
-    const count = Object.keys(players).length;
+    const hiddenNames = ['test'];
+    const visibleCount = Object.values(players).filter(p => !hiddenNames.includes((p.name || '').toLowerCase())).length;
     const el = document.getElementById('player-count');
-    if (el) el.textContent = count > 0 ? `${count} player${count > 1 ? 's' : ''} already joined!` : '';
+    if (el) el.textContent = visibleCount > 0 ? `${visibleCount} player${visibleCount > 1 ? 's' : ''} already joined!` : '';
     render();
   });
 }
@@ -539,8 +540,11 @@ function renderLeaderboard() {
   const container = document.getElementById('tab-leaderboard');
   const scores = {};
 
+  const HIDDEN_PLAYERS = ['test'];
+
   Object.keys(players).forEach(key => {
     const name = players[key].name || key;
+    if (!isAdmin && HIDDEN_PLAYERS.includes(name.toLowerCase())) return;
     scores[name] = { points: 0, correct: 0, total: 0 };
   });
 
