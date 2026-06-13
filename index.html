@@ -249,27 +249,45 @@
     /* === LOGIN === */
     .login-screen {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 80vh; padding: 32px; text-align: center;
+      justify-content: center; min-height: 100vh; padding: 32px 24px; text-align: center;
       position: relative; z-index: 1;
     }
+
+    .login-brand {
+      margin-bottom: 36px;
+    }
+
     .login-screen .trophy {
-      font-size: 100px; margin-bottom: 24px;
+      font-size: 72px; margin-bottom: 16px;
       animation: float 3s ease-in-out infinite;
       filter: drop-shadow(0 10px 30px rgba(242, 169, 0, 0.3));
     }
     @keyframes float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
 
-    .login-screen h2 {
-      font-size: 38px; font-weight: 900; margin-bottom: 10px;
-      text-transform: uppercase; letter-spacing: 1px;
-      background: linear-gradient(135deg, var(--teal), var(--sky));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .login-title {
+      font-size: 36px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      line-height: 1.1;
+      color: var(--text);
     }
-    .login-screen > p {
-      color: var(--text-secondary); font-size: 15px; margin-bottom: 36px;
-      max-width: 320px; line-height: 1.7; font-weight: 500;
+
+    .login-subtitle {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-top: 8px;
+    }
+
+    .login-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 24px;
     }
 
     .input-group { width: 100%; max-width: 320px; margin-bottom: 16px; }
@@ -808,24 +826,24 @@
 </div>
 
 <div id="login-view">
-  <div class="header">
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☀️</button>
-    <h1>⚽ FIFA World Cup 2026</h1>
-    <p>Prediction Game</p>
-  </div>
   <div class="login-screen">
-    <div class="trophy">🏆</div>
-    <h2>Predict & Win!</h2>
-    <p>Predict match winners with your friends. 2 points for every correct prediction. Top the leaderboard!</p>
-    <div class="input-group">
-      <input type="text" id="name-input" placeholder="Your name" autocomplete="off">
+    <button class="theme-toggle" onclick="toggleTheme()" style="position:absolute;top:20px;left:20px;" aria-label="Toggle theme">☀️</button>
+    <div class="login-brand">
+      <div class="trophy">🏆</div>
+      <h1 class="login-title">FIFA World Cup<br>2026</h1>
+      <p class="login-subtitle">Prediction Game</p>
     </div>
-    <div class="input-group">
-      <input type="tel" id="phone-input" placeholder="Mobile number (10 digits)" autocomplete="off" maxlength="10" onkeypress="if(event.key==='Enter')joinGame()">
+    <div class="login-form">
+      <div class="input-group">
+        <input type="text" id="name-input" placeholder="Your name" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <input type="tel" id="phone-input" placeholder="Mobile number (10 digits)" autocomplete="off" maxlength="10" onkeypress="if(event.key==='Enter')joinGame()">
+      </div>
+      <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:700;"></p>
+      <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
+      <p class="player-count" id="player-count"></p>
     </div>
-    <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:700;"></p>
-    <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
-    <p class="player-count" id="player-count"></p>
     <div class="rules">
       <strong>How it works:</strong><br>
       ✅ Predict the winner (or Draw) before each match<br>
