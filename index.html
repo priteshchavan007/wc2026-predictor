@@ -1397,7 +1397,11 @@ function renderLeaderboard() {
 
   // Calculate rank movements
   const currentRanks = {};
-  sorted.forEach(([key], i) => { currentRanks[key] = i + 1; });
+  let calcRank = 1;
+  sorted.forEach(([key, s], i) => {
+    if (i > 0 && s.points < sorted[i - 1][1].points) calcRank = i + 1;
+    currentRanks[key] = calcRank;
+  });
 
   // Find best predictor of last match
   const decidedMatches = MATCHES.filter(m => results[m.id]);
@@ -1430,15 +1434,20 @@ function renderLeaderboard() {
   if (sorted.length === 0) {
     html += '<div class="empty"><div class="empty-icon">📊</div><p style="font-size:15px;font-weight:600;">No players yet.</p></div>';
   } else {
+    // Calculate actual ranks (same points = same rank)
+    let actualRank = 1;
     sorted.forEach(([playerKey, stats], i) => {
-      const cls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
+      if (i > 0 && stats.points < sorted[i - 1][1].points) {
+        actualRank = i + 1;
+      }
+
       const you = playerKey === currentUser ? '<span class="lb-you">(You)</span>' : '';
 
       // Rank movement arrow
       let arrow = '';
       const prevRank = previousRanks[playerKey];
       if (prevRank !== undefined) {
-        const diff = prevRank - (i + 1);
+        const diff = prevRank - actualRank;
         if (diff > 0) arrow = `<span style="color:var(--green);font-size:11px;font-weight:800;margin-left:6px;">▲${diff}</span>`;
         else if (diff < 0) arrow = `<span style="color:var(--red);font-size:11px;font-weight:800;margin-left:6px;">▼${Math.abs(diff)}</span>`;
       }
@@ -1446,11 +1455,11 @@ function renderLeaderboard() {
       // Streak badge
       const streakBadge = stats.streak >= 2 ? `<span style="font-size:11px;margin-left:6px;">🔥${stats.streak}</span>` : '';
 
-      const pointsGained = prevRank !== undefined && prevRank > (i + 1);
+      const pointsGained = prevRank !== undefined && prevRank > actualRank;
 
       html += `
-        <div class="lb-item ${cls}">
-          <div class="rank">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
+        <div class="lb-item">
+          <div class="rank">${actualRank}</div>
           <div class="lb-name">${stats.name}${you}${arrow}${streakBadge}</div>
           <div class="lb-stats">
             <div class="lb-pts ${pointsGained ? 'gained' : ''}">${stats.points} pts</div>
