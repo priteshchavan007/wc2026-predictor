@@ -1545,14 +1545,33 @@ async function fetchLiveScores() {
   }
 }
 
+const TEAM_NAME_MAP = {
+  'korea republic': 'south korea',
+  'czechia': 'czech republic',
+  'bosnia-h.': 'bosnia & herzegovina',
+  'bosnia and herzegovina': 'bosnia & herzegovina',
+  'usa': 'united states',
+  'ir iran': 'iran',
+  'türkiye': 'turkey',
+  'ivory coast': 'ivory coast',
+  "cote d'ivoire": 'ivory coast',
+  'congo dr': 'dr congo',
+  'cape verde islands': 'cape verde',
+};
+
+function normalizeTeamName(name) {
+  const lower = name.toLowerCase();
+  return TEAM_NAME_MAP[lower] || lower;
+}
+
 function findLocalMatch(homeTeam, awayTeam) {
+  const apiH = normalizeTeamName(homeTeam);
+  const apiA = normalizeTeamName(awayTeam);
   return MATCHES.find(m => {
     const h = m.team1.toLowerCase();
     const a = m.team2.toLowerCase();
-    const apiH = homeTeam.toLowerCase();
-    const apiA = awayTeam.toLowerCase();
-    return (h.includes(apiH) || apiH.includes(h) || h === apiH) &&
-           (a.includes(apiA) || apiA.includes(a) || a === apiA);
+    return (h === apiH || h.includes(apiH) || apiH.includes(h)) &&
+           (a === apiA || a.includes(apiA) || apiA.includes(a));
   });
 }
 
