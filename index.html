@@ -1373,25 +1373,26 @@ function renderLeaderboard() {
 
 function renderResults() {
   const container = document.getElementById('tab-results');
-  const completed = MATCHES.filter(m => results[m.id]);
+  const completed = MATCHES.filter(m => results[m.id] || isMatchLocked(m));
 
   if (completed.length === 0) {
     container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p style="font-size:15px;font-weight:600;">No results yet.<br><span style="font-weight:400;font-size:13px;">Check back after matches are played!</span></p></div>';
     return;
   }
 
-  let html = '<div class="section-label">Completed Matches</div>';
+  let html = '<div class="section-label">Matches</div>';
   [...completed].reverse().forEach(match => {
     const winner = results[match.id];
+    const hasResult = !!winner;
     const userKey = currentUser + '_' + match.id;
     const userPick = predictions[userKey];
-    const isCorrect = userPick === winner;
+    const isCorrect = hasResult && userPick === winner;
     const isDraw = winner === 'Draw';
     const team1Won = winner === match.team1;
     const team2Won = winner === match.team2;
 
     html += `
-      <div class="match-card predicted">
+      <div class="match-card ${hasResult ? 'predicted' : ''}">
         <div class="team-wash" style="background: linear-gradient(135deg, rgba(0,178,169,0.3) 0%, rgba(228,72,91,0.2) 100%);"></div>
         <div class="match-meta">
           <span class="group-tag">${match.group}</span>
@@ -1403,7 +1404,7 @@ function renderResults() {
             <div class="team-flag">${match.flag1}</div>
             <div class="team-name" style="${team1Won ? 'color:var(--green);' : ''}">${match.team1}</div>
           </div>
-          <div class="vs" style="font-size:12px;font-weight:900;color:${isDraw ? 'var(--gold)' : 'var(--green)'};">${isDraw ? 'DRAW' : 'WIN'}</div>
+          <div class="vs" style="font-size:12px;font-weight:900;color:${!hasResult ? 'var(--text-secondary)' : isDraw ? 'var(--gold)' : 'var(--green)'};">${!hasResult ? 'LIVE' : isDraw ? 'DRAW' : 'WIN'}</div>
           <div class="team">
             <div class="team-flag">${match.flag2}</div>
             <div class="team-name" style="${team2Won ? 'color:var(--green);' : ''}">${match.team2}</div>
@@ -1411,9 +1412,11 @@ function renderResults() {
         </div>
         <div class="result-bottom">
           <span>Your pick: <strong>${userPick || '—'}</strong></span>
-          ${userPick
-            ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
-            : '<span style="color:var(--text-secondary)">No prediction</span>'
+          ${hasResult
+            ? userPick
+              ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
+              : '<span style="color:var(--text-secondary)">No prediction</span>'
+            : '<span style="color:var(--gold);font-weight:700;">Awaiting result</span>'
           }
         </div>
       </div>`;
