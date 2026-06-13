@@ -1,13 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Reset Firebase to Official Standings</title>
+  <title>Migration: Move data to groups/default</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 24px; }
+    pre { white-space: pre-wrap; }
+    button { padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px; background: #222; color: #0f0; border: 1px solid #0f0; border-radius: 6px; }
+    button:hover { background: #0f0; color: #111; }
+    .warning { color: #ff0; }
+    .error { color: #f44; }
+    .success { color: #0f0; }
+  </style>
 </head>
 <body>
-  <h2>Resetting Firebase to match official leaderboard...</h2>
+  <h2>Firebase Migration: Multi-Group Support</h2>
+  <p class="warning">This script migrates existing data into the new groups/default structure.</p>
+  <p>New structure:</p>
+  <pre>
+  groups/
+    default/
+      info: { name, code, createdBy, createdAt }
+      members: { phone: { role, joinedAt } }
+      players: { phone: { name, phone, joined } }
+      predictions: { phone_matchId: pick }
+  results/ (global - unchanged)
+  users/ (global user profiles)
+  groupCodes/ (code -> groupId lookup)
+  </pre>
+  <button onclick="runMigration()">Run Migration</button>
+  <button onclick="verifyMigration()">Verify Migration</button>
+  <button onclick="rollback()">Rollback (Danger!)</button>
   <pre id="log"></pre>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDDuFB5d2R9gws79kX117mGHJvxZRIbwNk",
@@ -21,96 +47,216 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const log = document.getElementById('log');
-    function l(msg) { log.textContent += msg + '\n'; }
+    const logEl = document.getElementById('log');
 
-    const PLAYERS = {
-      '8097296438': { name: 'Pritesh', phone: '8097296438' },
-      '9742596242': { name: 'Tanmay', phone: '9742596242' },
-      '7507057136': { name: 'Hemant', phone: '7507057136' },
-      '9100787232': { name: 'Vidhi', phone: '9100787232' },
-      '9916753799': { name: 'Shweta', phone: '9916753799' },
-      '9989601611': { name: 'Majji', phone: '9989601611' },
-      '9703364440': { name: 'Sandeep', phone: '9703364440' },
-      '9553760842': { name: 'Anurag', phone: '9553760842' },
-      '9591771293': { name: 'Priyanka', phone: '9591771293' },
-      '8095707763': { name: 'Happy', phone: '8095707763' },
-      '8968834670': { name: 'Germanjit', phone: '8968834670' },
-      '8582609793': { name: 'Aditi', phone: '8582609793' },
-      '9834159538': { name: 'Pushkin', phone: '9834159538' },
-      '8826032950': { name: 'Deepshika', phone: '8826032950' },
-      '9836657468': { name: 'Nirjhar', phone: '9836657468' },
-    };
-
-    // Only one match has been decided so far: USA 4-1 Paraguay (md1_04)
-    // Result: United States won
-    // Correct predictions (2 pts each): Germanjit, Pritesh, Vidhi
-    // This means only md1_04 has a result set. Canada vs Bosnia was a draw
-    // but based on the leaderboard, it seems only USA vs Paraguay was counted.
-    // Actually: Germanjit=2 means he got one match right.
-    // Pritesh=2, Vidhi=2 means they each got one match right.
-    // Let's set it as: only USA vs Paraguay result exists (United States won)
-    // Germanjit predicted USA (correct), Pritesh predicted USA (correct), Vidhi predicted USA (correct)
-
-    const RESULTS = {
-      'md1_04': 'United States'
-    };
-
-    // Predictions for md1_04 (USA vs Paraguay)
-    // Correct (USA): Pritesh, Vidhi, Germanjit
-    // Wrong (Paraguay or Draw): everyone else who participated
-    const PREDICTIONS = {
-      '8097296438_md1_04': 'United States',   // Pritesh ✓
-      '9100787232_md1_04': 'United States',   // Vidhi ✓
-      '8968834670_md1_04': 'United States',   // Germanjit ✓
-      '9742596242_md1_04': 'Paraguay',        // Tanmay
-      '7507057136_md1_04': 'Draw',            // Hemant
-      '9989601611_md1_04': 'Draw',            // Majji
-      '9553760842_md1_04': 'Paraguay',        // Anurag
-      '9591771293_md1_04': 'Paraguay',        // Priyanka
-      '8095707763_md1_04': 'Paraguay',        // Happy
-      '9916753799_md1_04': 'Paraguay',        // Shweta
-      '9703364440_md1_04': 'Paraguay',        // Sandeep
-    };
-
-    async function reset() {
-      l('Step 1: Wiping all existing data...\n');
-      await db.ref('players').remove();
-      await db.ref('predictions').remove();
-      await db.ref('results').remove();
-      l('  Done.\n');
-
-      l('Step 2: Creating players (phone-based keys)...\n');
-      for (const [phone, data] of Object.entries(PLAYERS)) {
-        await db.ref('players/' + phone).set({
-          name: data.name,
-          phone: data.phone,
-          joined: '2026-06-12T00:00:00.000Z'
-        });
-        l(`  + ${data.name} → ${phone}`);
-      }
-
-      l('\nStep 3: Setting predictions...\n');
-      for (const [key, val] of Object.entries(PREDICTIONS)) {
-        await db.ref('predictions/' + key).set(val);
-        l(`  ${key} = ${val}`);
-      }
-
-      l('\nStep 4: Setting results...\n');
-      for (const [key, val] of Object.entries(RESULTS)) {
-        await db.ref('results/' + key).set(val);
-        l(`  ${key} = ${val}`);
-      }
-
-      l('\n✅ Reset complete!\n');
-      l('Leaderboard should now show:');
-      l('  Germanjit: 2 pts');
-      l('  Pritesh: 2 pts');
-      l('  Vidhi: 2 pts');
-      l('  Everyone else: 0 pts');
+    function l(msg, cls) {
+      const span = document.createElement('span');
+      span.className = cls || '';
+      span.textContent = msg + '\n';
+      logEl.appendChild(span);
+      logEl.scrollTop = logEl.scrollHeight;
     }
 
-    reset().catch(e => l('ERROR: ' + e.message));
+    const DEFAULT_GROUP_ID = 'default';
+    const DEFAULT_GROUP_NAME = "Pritesh's Predictor Squad";
+    const DEFAULT_GROUP_CODE = 'PRED26';
+    const ADMIN_PHONE = '8097296438'; // Pritesh
+
+    async function runMigration() {
+      l('=== Starting Migration ===');
+      l('');
+
+      // Step 1: Check if migration already happened
+      const existingGroup = await db.ref('groups/' + DEFAULT_GROUP_ID).once('value');
+      if (existingGroup.exists()) {
+        l('Migration already completed! groups/default already exists.', 'warning');
+        l('Use "Verify Migration" to check data, or "Rollback" to undo.', 'warning');
+        return;
+      }
+
+      // Step 2: Read current data
+      l('Step 1: Reading current data...');
+      const playersSnap = await db.ref('players').once('value');
+      const predictionsSnap = await db.ref('predictions').once('value');
+      const resultsSnap = await db.ref('results').once('value');
+
+      const players = playersSnap.val() || {};
+      const predictions = predictionsSnap.val() || {};
+      const results = resultsSnap.val() || {};
+
+      const playerCount = Object.keys(players).length;
+      const predictionCount = Object.keys(predictions).length;
+      const resultCount = Object.keys(results).length;
+
+      l(`  Found ${playerCount} players`);
+      l(`  Found ${predictionCount} predictions`);
+      l(`  Found ${resultCount} results`);
+      l('');
+
+      // Step 3: Build the new structure
+      l('Step 2: Building new group structure...');
+
+      const updates = {};
+
+      // Group info
+      updates[`groups/${DEFAULT_GROUP_ID}/info`] = {
+        name: DEFAULT_GROUP_NAME,
+        code: DEFAULT_GROUP_CODE,
+        createdBy: ADMIN_PHONE,
+        createdAt: '2026-06-12T00:00:00.000Z'
+      };
+
+      // Members
+      Object.keys(players).forEach(phone => {
+        updates[`groups/${DEFAULT_GROUP_ID}/members/${phone}`] = {
+          role: phone === ADMIN_PHONE ? 'admin' : 'member',
+          joinedAt: players[phone].joined || '2026-06-12T00:00:00.000Z'
+        };
+      });
+
+      // Players in group
+      Object.entries(players).forEach(([phone, data]) => {
+        updates[`groups/${DEFAULT_GROUP_ID}/players/${phone}`] = data;
+      });
+
+      // Predictions in group
+      Object.entries(predictions).forEach(([key, val]) => {
+        updates[`groups/${DEFAULT_GROUP_ID}/predictions/${key}`] = val;
+      });
+
+      // Global users (profile data)
+      Object.entries(players).forEach(([phone, data]) => {
+        updates[`users/${phone}`] = {
+          name: data.name,
+          phone: data.phone,
+          joined: data.joined || '2026-06-12T00:00:00.000Z',
+          groups: { [DEFAULT_GROUP_ID]: true }
+        };
+      });
+
+      // Group code lookup
+      updates[`groupCodes/${DEFAULT_GROUP_CODE}`] = DEFAULT_GROUP_ID;
+
+      // Results stay at root level (global)
+      // They are already there, no need to move
+
+      l(`  Prepared ${Object.keys(updates).length} database writes`);
+      l('');
+
+      // Step 4: Write all updates atomically
+      l('Step 3: Writing new structure to Firebase...');
+      try {
+        await db.ref().update(updates);
+        l('  All writes successful!', 'success');
+      } catch (e) {
+        l('  ERROR: ' + e.message, 'error');
+        return;
+      }
+      l('');
+
+      // Step 5: Clean up old root-level players and predictions
+      l('Step 4: Cleaning up old root-level data...');
+      try {
+        await db.ref('players').remove();
+        l('  Removed root /players');
+        await db.ref('predictions').remove();
+        l('  Removed root /predictions');
+        await db.ref('rankHistory').remove();
+        l('  Removed root /rankHistory');
+      } catch (e) {
+        l('  Warning: cleanup error (non-critical): ' + e.message, 'warning');
+      }
+      l('');
+
+      l('=== Migration Complete! ===', 'success');
+      l('');
+      l('Summary:', 'success');
+      l(`  Group: "${DEFAULT_GROUP_NAME}" (code: ${DEFAULT_GROUP_CODE})`);
+      l(`  Members: ${playerCount}`);
+      l(`  Predictions migrated: ${predictionCount}`);
+      l(`  Results (global): ${resultCount}`);
+      l('');
+      l('Users can now join with code PRED26 or the shared link.');
+    }
+
+    async function verifyMigration() {
+      l('');
+      l('=== Verifying Migration ===');
+
+      const groupInfo = await db.ref('groups/' + DEFAULT_GROUP_ID + '/info').once('value');
+      if (!groupInfo.exists()) {
+        l('  ERROR: groups/default/info does not exist', 'error');
+        return;
+      }
+      l('  Group info: ' + JSON.stringify(groupInfo.val()), 'success');
+
+      const members = await db.ref('groups/' + DEFAULT_GROUP_ID + '/members').once('value');
+      l(`  Members: ${Object.keys(members.val() || {}).length}`, 'success');
+
+      const players = await db.ref('groups/' + DEFAULT_GROUP_ID + '/players').once('value');
+      l(`  Players: ${Object.keys(players.val() || {}).length}`, 'success');
+
+      const predictions = await db.ref('groups/' + DEFAULT_GROUP_ID + '/predictions').once('value');
+      l(`  Predictions: ${Object.keys(predictions.val() || {}).length}`, 'success');
+
+      const results = await db.ref('results').once('value');
+      l(`  Results (global): ${Object.keys(results.val() || {}).length}`, 'success');
+
+      const users = await db.ref('users').once('value');
+      l(`  Global users: ${Object.keys(users.val() || {}).length}`, 'success');
+
+      const codes = await db.ref('groupCodes').once('value');
+      l(`  Group codes: ${JSON.stringify(codes.val())}`, 'success');
+
+      // Check old data is gone
+      const oldPlayers = await db.ref('players').once('value');
+      const oldPredictions = await db.ref('predictions').once('value');
+      if (oldPlayers.exists() || oldPredictions.exists()) {
+        l('  WARNING: Old root-level players/predictions still exist!', 'warning');
+      } else {
+        l('  Old root-level data cleaned up.', 'success');
+      }
+
+      l('');
+      l('=== Verification Complete ===', 'success');
+    }
+
+    async function rollback() {
+      if (!confirm('Are you sure? This will undo the migration and restore old structure.')) return;
+
+      l('');
+      l('=== Rolling Back ===', 'warning');
+
+      // Read from group
+      const players = await db.ref('groups/' + DEFAULT_GROUP_ID + '/players').once('value');
+      const predictions = await db.ref('groups/' + DEFAULT_GROUP_ID + '/predictions').once('value');
+
+      if (!players.exists()) {
+        l('  ERROR: No group data found to rollback from', 'error');
+        return;
+      }
+
+      // Restore old structure
+      const updates = {};
+      Object.entries(players.val() || {}).forEach(([k, v]) => {
+        updates[`players/${k}`] = v;
+      });
+      Object.entries(predictions.val() || {}).forEach(([k, v]) => {
+        updates[`predictions/${k}`] = v;
+      });
+
+      await db.ref().update(updates);
+      l('  Restored root /players and /predictions');
+
+      // Remove new structure
+      await db.ref('groups').remove();
+      await db.ref('users').remove();
+      await db.ref('groupCodes').remove();
+      l('  Removed groups/, users/, groupCodes/');
+
+      l('');
+      l('=== Rollback Complete ===', 'success');
+    }
   </script>
 </body>
 </html>

@@ -806,6 +806,36 @@
     }
     .notif-btn:hover { background: var(--teal); color: #fff; }
 
+    /* === GROUP CARDS === */
+    .group-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .group-card:hover { border-color: var(--teal); transform: translateY(-1px); }
+    .group-card:active { transform: scale(0.98); }
+    .group-card-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .group-card-code { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 1px; }
+
+    /* === PROFILE MODAL === */
+    .profile-stat {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 13px;
+    }
+    .profile-stat:last-child { border-bottom: none; }
+    .profile-stat-label { color: var(--text-secondary); font-weight: 600; }
+    .profile-stat-value { font-weight: 800; font-size: 15px; }
+    .profile-h2h { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--card-border); }
+
     /* === SCROLLBAR === */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -855,6 +885,27 @@
   </div>
 </div>
 
+<!-- GROUP SELECTION VIEW -->
+<div id="group-view" style="display:none;">
+  <div class="login-screen" style="min-height:100vh;">
+    <button class="theme-toggle" onclick="toggleTheme()" style="position:absolute;top:20px;left:20px;" aria-label="Toggle theme">☀️</button>
+    <div class="login-brand" style="margin-bottom:24px;">
+      <h1 class="login-title" style="font-size:24px;">Your Groups</h1>
+      <p class="login-subtitle" style="letter-spacing:1px;">Select or create a group</p>
+    </div>
+    <div id="my-groups-list" style="width:100%;max-width:320px;margin-bottom:20px;"></div>
+    <div style="display:flex;gap:10px;width:100%;max-width:320px;">
+      <button class="btn btn-primary" onclick="createGroup()" style="flex:1;padding:14px 16px;font-size:13px;">Create Group</button>
+      <button class="btn btn-primary" onclick="joinGroupByCode()" style="flex:1;padding:14px 16px;font-size:13px;background:var(--teal);">Join Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER PROFILE MODAL -->
+<div id="profile-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeProfile()">
+  <div id="profile-content" style="width:100%;max-width:400px;max-height:80vh;overflow-y:auto;background:var(--card-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:20px;padding:28px 24px;"></div>
+</div>
+
 <div id="app-view" style="display:none;">
   <div class="sticky-top">
     <div class="header">
@@ -864,7 +915,7 @@
       </div>
       <div class="header-title">
         <h1>⚽ FIFA World Cup 2026</h1>
-        <p>Prediction Game</p>
+        <p id="group-name-display" style="color:var(--teal);font-weight:700;letter-spacing:0.5px;">Prediction Game</p>
       </div>
     </div>
     <div class="tabs" id="tab-bar">
@@ -877,11 +928,15 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
       <div class="settings-dropdown" id="settings-dropdown">
-        <div class="settings-item" onclick="shareGame(); closeSettings();">
+        <div class="settings-item" onclick="shareGroupLink()">
           <span class="settings-icon">📲</span>
-          <span>Share Link</span>
+          <span>Invite to Group</span>
         </div>
-        <div class="settings-item" onclick="changeName(); closeSettings();">
+        <div class="settings-item" onclick="switchGroup()">
+          <span class="settings-icon">🔄</span>
+          <span>Switch Group</span>
+        </div>
+        <div class="settings-item" onclick="changeName()">
           <span class="settings-icon">✏️</span>
           <span>Change Name</span>
         </div>
@@ -1219,41 +1274,187 @@ const MATCHES = [
 
 // ========== STATE ==========
 let currentUser = localStorage.getItem('wc2026_user');
+let currentGroup = localStorage.getItem('wc2026_group');
 let predictions = {};
 let results = {};
 let players = {};
 let dynamicMatches = [];
+let groupInfo = null;
+let activeListeners = [];
 
 function getAllMatches() {
   return dynamicMatches.length > 0 ? dynamicMatches : MATCHES;
 }
 
 // ========== FIREBASE LISTENERS ==========
+function detachListeners() {
+  activeListeners.forEach(({ ref, type, cb }) => ref.off(type, cb));
+  activeListeners = [];
+}
+
 function initListeners() {
-  db.ref('predictions').on('value', snap => {
+  if (!currentGroup) return;
+  detachListeners();
+
+  const groupPath = 'groups/' + currentGroup;
+
+  const predRef = db.ref(groupPath + '/predictions');
+  const predCb = predRef.on('value', snap => {
     predictions = snap.val() || {};
     render();
   });
+  activeListeners.push({ ref: predRef, type: 'value', cb: predCb });
 
-  db.ref('results').on('value', snap => {
+  const resRef = db.ref('results');
+  const resCb = resRef.on('value', snap => {
     results = snap.val() || {};
     render();
-    // Re-schedule notifications when results change
     if (notificationsEnabled) scheduleUpcomingNotifications();
   });
+  activeListeners.push({ ref: resRef, type: 'value', cb: resCb });
 
-  db.ref('players').on('value', snap => {
+  const playRef = db.ref(groupPath + '/players');
+  const playCb = playRef.on('value', snap => {
     players = snap.val() || {};
-    const hiddenNames = ['test'];
-    const visibleCount = Object.values(players).filter(p => !hiddenNames.includes((p.name || '').toLowerCase())).length;
-    const el = document.getElementById('player-count');
-    if (el) el.textContent = visibleCount > 0 ? `${visibleCount} player${visibleCount > 1 ? 's' : ''} already joined!` : '';
     render();
   });
+  activeListeners.push({ ref: playRef, type: 'value', cb: playCb });
 
-  db.ref('rankHistory').on('value', snap => {
+  const rankRef = db.ref(groupPath + '/rankHistory');
+  const rankCb = rankRef.on('value', snap => {
     previousRanks = snap.val() || {};
   });
+  activeListeners.push({ ref: rankRef, type: 'value', cb: rankCb });
+
+  // Load group info
+  db.ref(groupPath + '/info').once('value', snap => {
+    groupInfo = snap.val();
+    const groupNameEl = document.getElementById('group-name-display');
+    if (groupNameEl && groupInfo) groupNameEl.textContent = groupInfo.name;
+  });
+}
+
+// ========== GROUP MANAGEMENT ==========
+function generateGroupCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function showGroupSelection() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'none';
+  document.getElementById('group-view').style.display = 'block';
+
+  // Load user's groups
+  db.ref('users/' + currentUser + '/groups').once('value', snap => {
+    const groups = snap.val() || {};
+    const groupIds = Object.keys(groups);
+
+    if (groupIds.length === 0) {
+      document.getElementById('my-groups-list').innerHTML = '<p style="color:var(--text-secondary);font-size:13px;">You haven\'t joined any group yet.</p>';
+    } else {
+      let html = '';
+      let loaded = 0;
+      groupIds.forEach(gId => {
+        db.ref('groups/' + gId + '/info').once('value', infoSnap => {
+          const info = infoSnap.val();
+          loaded++;
+          if (info) {
+            html += `<div class="group-card" onclick="selectGroup('${gId}')">
+              <div class="group-card-name">${info.name}</div>
+              <div class="group-card-code">Code: ${info.code}</div>
+            </div>`;
+          }
+          if (loaded === groupIds.length) {
+            document.getElementById('my-groups-list').innerHTML = html || '<p style="color:var(--text-secondary);font-size:13px;">Loading...</p>';
+          }
+        });
+      });
+    }
+  });
+}
+
+function createGroup() {
+  const name = prompt('Enter a name for your group:');
+  if (!name || !name.trim()) return;
+
+  const code = generateGroupCode();
+  const groupId = code.toLowerCase();
+
+  db.ref('groupCodes/' + code).once('value', snap => {
+    if (snap.exists()) {
+      alert('Code collision, try again.');
+      return;
+    }
+
+    const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
+    const updates = {};
+    updates['groups/' + groupId + '/info'] = { name: name.trim(), code: code, createdBy: currentUser, createdAt: new Date().toISOString() };
+    updates['groups/' + groupId + '/members/' + currentUser] = { role: 'admin', joinedAt: new Date().toISOString() };
+    updates['groups/' + groupId + '/players/' + currentUser] = { name: displayName, phone: currentUser, joined: new Date().toISOString() };
+    updates['groupCodes/' + code] = groupId;
+    updates['users/' + currentUser + '/groups/' + groupId] = true;
+
+    db.ref().update(updates).then(() => {
+      selectGroup(groupId);
+    });
+  });
+}
+
+function joinGroupByCode() {
+  const code = prompt('Enter the 6-character group code:');
+  if (!code || !code.trim()) return;
+
+  const upperCode = code.trim().toUpperCase();
+  db.ref('groupCodes/' + upperCode).once('value', snap => {
+    if (!snap.exists()) {
+      alert('Invalid group code. Please check and try again.');
+      return;
+    }
+    const groupId = snap.val();
+    joinGroup(groupId);
+  });
+}
+
+function joinGroup(groupId) {
+  const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
+  const updates = {};
+  updates['groups/' + groupId + '/members/' + currentUser] = { role: 'member', joinedAt: new Date().toISOString() };
+  updates['groups/' + groupId + '/players/' + currentUser] = { name: displayName, phone: currentUser, joined: new Date().toISOString() };
+  updates['users/' + currentUser + '/groups/' + groupId] = true;
+
+  db.ref().update(updates).then(() => {
+    selectGroup(groupId);
+  });
+}
+
+function selectGroup(groupId) {
+  currentGroup = groupId;
+  localStorage.setItem('wc2026_group', groupId);
+  document.getElementById('group-view').style.display = 'none';
+  showApp();
+  initListeners();
+}
+
+function switchGroup() {
+  closeSettings();
+  detachListeners();
+  showGroupSelection();
+}
+
+function shareGroupLink() {
+  closeSettings();
+  if (!groupInfo) return;
+  const url = window.location.origin + window.location.pathname + '?group=' + groupInfo.code;
+  const text = `⚽🏆 *FIFA World Cup 2026 — Prediction Game!*\n\nJoin my group "${groupInfo.name}"!\n✅ 2 points per correct prediction\n📊 Live leaderboard\n\n👉 Join here: ${url}\nOr use code: *${groupInfo.code}*`;
+
+  if (navigator.share) {
+    navigator.share({ title: 'WC 2026 Predictor', text: text, url: url });
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
 }
 
 // ========== AUTH ==========
@@ -1271,26 +1472,48 @@ function joinGame() {
     return;
   }
 
-  const key = phone;
+  currentUser = phone;
+  localStorage.setItem('wc2026_user', phone);
+  localStorage.setItem('wc2026_displayName', name);
 
-  db.ref('players/' + key).once('value', snap => {
+  // Create/update global user profile
+  db.ref('users/' + phone).once('value', snap => {
     if (snap.exists()) {
-      // Returning user — update name if changed, log them in
-      const stored = snap.val();
-      if (stored.name !== name) {
-        db.ref('players/' + key + '/name').set(name);
-      }
-      currentUser = key;
-      localStorage.setItem('wc2026_user', key);
-      localStorage.setItem('wc2026_displayName', name);
-      showApp();
+      if (snap.val().name !== name) db.ref('users/' + phone + '/name').set(name);
     } else {
-      // New user
-      currentUser = key;
-      localStorage.setItem('wc2026_user', key);
-      localStorage.setItem('wc2026_displayName', name);
-      db.ref('players/' + key).set({ name: name, phone: phone, joined: new Date().toISOString() });
-      showApp();
+      db.ref('users/' + phone).set({ name: name, phone: phone, joined: new Date().toISOString(), groups: {} });
+    }
+
+    // Check URL for group code
+    const urlGroup = new URLSearchParams(window.location.search).get('group');
+    if (urlGroup) {
+      db.ref('groupCodes/' + urlGroup.toUpperCase()).once('value', codeSnap => {
+        if (codeSnap.exists()) {
+          joinGroup(codeSnap.val());
+        } else {
+          afterLogin();
+        }
+      });
+    } else {
+      afterLogin();
+    }
+  });
+}
+
+function afterLogin() {
+  db.ref('users/' + currentUser + '/groups').once('value', snap => {
+    const groups = snap.val() || {};
+    const groupIds = Object.keys(groups);
+
+    if (groupIds.length === 1) {
+      // Auto-select single group
+      selectGroup(groupIds[0]);
+    } else if (groupIds.length > 1 && currentGroup && groups[currentGroup]) {
+      // Resume last group
+      selectGroup(currentGroup);
+    } else {
+      // Show group selection
+      showGroupSelection();
     }
   });
 }
@@ -1301,34 +1524,37 @@ function sanitizeKey(str) {
 
 function showApp() {
   document.getElementById('login-view').style.display = 'none';
+  document.getElementById('group-view').style.display = 'none';
   document.getElementById('app-view').style.display = 'block';
   const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
   document.getElementById('display-name').textContent = displayName;
-  const headerDateEl = document.getElementById('header-date');
-  if (headerDateEl) headerDateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
   render();
-  // Schedule notifications after login
   if (notificationsEnabled) scheduleUpcomingNotifications();
 }
 
 function changeName() {
+  closeSettings();
   const newName = prompt('Enter your new name:');
   if (!newName || !newName.trim()) return;
   const trimmed = newName.trim();
 
-  db.ref('players/' + currentUser + '/name').set(trimmed);
+  db.ref('groups/' + currentGroup + '/players/' + currentUser + '/name').set(trimmed);
+  db.ref('users/' + currentUser + '/name').set(trimmed);
   localStorage.setItem('wc2026_displayName', trimmed);
   document.getElementById('display-name').textContent = trimmed;
   render();
-  alert('Name changed to "' + trimmed + '"!');
 }
 
 function logout() {
   localStorage.removeItem('wc2026_user');
   localStorage.removeItem('wc2026_displayName');
+  localStorage.removeItem('wc2026_group');
   currentUser = null;
+  currentGroup = null;
+  detachListeners();
   document.getElementById('login-view').style.display = 'block';
   document.getElementById('app-view').style.display = 'none';
+  document.getElementById('group-view').style.display = 'none';
 }
 
 // ========== TABS ==========
@@ -1564,7 +1790,7 @@ function renderLeaderboard() {
       html += `
         <div class="lb-item">
           <div class="rank">${actualRank}</div>
-          <div class="lb-name">${stats.name}${you}${arrow}${streakBadge}</div>
+          <div class="lb-name" onclick="showProfile('${playerKey}')" style="cursor:pointer;">${stats.name}${you}${arrow}${streakBadge}</div>
           <div class="lb-stats">
             <div class="lb-pts ${pointsGained ? 'gained' : ''}">${stats.points} pts</div>
             <div class="lb-record">${stats.correct}/${stats.total} correct</div>
@@ -1576,9 +1802,104 @@ function renderLeaderboard() {
   container.innerHTML = html;
 
   // Store current ranks (admin only, updates comparison for other users)
-  if (isAdmin && Object.keys(currentRanks).length > 0) {
-    db.ref('rankHistory').set(currentRanks);
+  if (isAdmin && currentGroup && Object.keys(currentRanks).length > 0) {
+    db.ref('groups/' + currentGroup + '/rankHistory').set(currentRanks);
   }
+}
+
+// ========== PLAYER PROFILE ==========
+function showProfile(playerKey) {
+  const player = players[playerKey];
+  if (!player) return;
+
+  const scores = calculateScores();
+  const stats = scores[playerKey] || { points: 0, correct: 0, total: 0, streak: 0 };
+  const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+
+  // Calculate longest streak
+  const decidedMatches = getAllMatches().filter(m => results[m.id]).map(m => m.id);
+  let longestStreak = 0, tempStreak = 0;
+  decidedMatches.forEach(mId => {
+    const predKey = playerKey + '_' + mId;
+    if (predictions[predKey] && predictions[predKey] === results[mId]) {
+      tempStreak++;
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  });
+
+  // Head-to-head vs current user
+  let h2hHtml = '';
+  if (playerKey !== currentUser) {
+    const myStats = scores[currentUser] || { points: 0, correct: 0, total: 0 };
+    let myWins = 0, theirWins = 0, ties = 0;
+    decidedMatches.forEach(mId => {
+      const myPred = predictions[currentUser + '_' + mId];
+      const theirPred = predictions[playerKey + '_' + mId];
+      const result = results[mId];
+      const myCorrect = myPred === result;
+      const theirCorrect = theirPred === result;
+      if (myCorrect && !theirCorrect) myWins++;
+      else if (!myCorrect && theirCorrect) theirWins++;
+      else ties++;
+    });
+    h2hHtml = `
+      <div class="profile-h2h">
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">Head to Head vs You</div>
+        <div style="display:flex;justify-content:space-around;text-align:center;">
+          <div><div style="font-size:22px;font-weight:900;color:var(--green);">${theirWins}</div><div style="font-size:10px;color:var(--text-secondary);">Their wins</div></div>
+          <div><div style="font-size:22px;font-weight:900;color:var(--text-secondary);">${ties}</div><div style="font-size:10px;color:var(--text-secondary);">Ties</div></div>
+          <div><div style="font-size:22px;font-weight:900;color:var(--teal);">${myWins}</div><div style="font-size:10px;color:var(--text-secondary);">Your wins</div></div>
+        </div>
+      </div>`;
+  }
+
+  // Prediction history
+  let historyHtml = '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--card-border);"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">Recent Predictions</div>';
+  decidedMatches.slice(-8).reverse().forEach(mId => {
+    const match = getAllMatches().find(m => m.id === mId);
+    if (!match) return;
+    const pred = predictions[playerKey + '_' + mId];
+    const correct = pred === results[mId];
+    historyHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px;">
+      <span>${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2}</span>
+      <span style="color:${pred ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--text-secondary)'};font-weight:700;">${pred ? (correct ? '✓' : '✗') : '—'}</span>
+    </div>`;
+  });
+  historyHtml += '</div>';
+
+  const html = `
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:28px;font-weight:900;">${player.name}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${stats.points} pts · Rank ${getCurrentRank(playerKey)}</div>
+    </div>
+    <div class="profile-stat"><span class="profile-stat-label">Accuracy</span><span class="profile-stat-value">${accuracy}%</span></div>
+    <div class="profile-stat"><span class="profile-stat-label">Correct / Total</span><span class="profile-stat-value">${stats.correct} / ${stats.total}</span></div>
+    <div class="profile-stat"><span class="profile-stat-label">Current Streak</span><span class="profile-stat-value">${stats.streak > 0 ? '🔥 ' + stats.streak : '0'}</span></div>
+    <div class="profile-stat"><span class="profile-stat-label">Longest Streak</span><span class="profile-stat-value">${longestStreak > 0 ? '🏅 ' + longestStreak : '0'}</span></div>
+    ${h2hHtml}
+    ${historyHtml}
+    <button onclick="closeProfile()" style="width:100%;margin-top:20px;padding:12px;border:1px solid var(--glass-border);border-radius:10px;background:transparent;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Close</button>
+  `;
+
+  document.getElementById('profile-content').innerHTML = html;
+  document.getElementById('profile-modal').style.display = 'flex';
+}
+
+function getCurrentRank(playerKey) {
+  const scores = calculateScores();
+  const sorted = Object.entries(scores).sort((a, b) => b[1].points - a[1].points || b[1].correct - a[1].correct);
+  let rank = 1;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i][1].points < sorted[i-1][1].points) rank++;
+    if (sorted[i][0] === playerKey) return rank;
+  }
+  return rank;
+}
+
+function closeProfile() {
+  document.getElementById('profile-modal').style.display = 'none';
 }
 
 function renderResults() {
@@ -1675,7 +1996,7 @@ function predict(matchId, pick) {
     return;
   }
   const key = currentUser + '_' + matchId;
-  db.ref('predictions/' + key).set(pick);
+  db.ref('groups/' + currentGroup + '/predictions/' + key).set(pick);
 }
 
 function setResult(matchId, winner) {
@@ -1684,21 +2005,7 @@ function setResult(matchId, winner) {
 }
 
 function shareGame() {
-  const url = window.location.href;
-  const text = `⚽🏆 *FIFA World Cup 2026 — Prediction Game!*
-
-Predict match winners & compete with friends!
-✅ 2 points per correct prediction
-📊 Live leaderboard
-🔥 ${Object.keys(players).length} players already in!
-
-👉 Join here: ${url}`;
-
-  if (navigator.share) {
-    navigator.share({ title: 'WC 2026 Predictor', text: text, url: url });
-  } else {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-  }
+  shareGroupLink();
 }
 
 // ========== ADMIN ACCESS ==========
@@ -1795,25 +2102,39 @@ function getApiScore(match) {
   return liveScores[match.id] || null;
 }
 
-// Fetch immediately and then every 60 seconds
-fetchLiveScores();
-setInterval(fetchLiveScores, 60000);
-
 // ========== INIT ==========
-initListeners();
+// Check for group code in URL (for shared links)
+const urlGroupCode = new URLSearchParams(window.location.search).get('group');
 
 if (currentUser) {
-  db.ref('players/' + currentUser).once('value', snap => {
+  db.ref('users/' + currentUser).once('value', snap => {
     if (snap.exists()) {
       localStorage.setItem('wc2026_displayName', snap.val().name);
-      showApp();
+
+      if (urlGroupCode) {
+        // Joining via shared link
+        db.ref('groupCodes/' + urlGroupCode.toUpperCase()).once('value', codeSnap => {
+          if (codeSnap.exists()) {
+            joinGroup(codeSnap.val());
+          } else {
+            afterLogin();
+          }
+        });
+      } else {
+        afterLogin();
+      }
     } else {
       localStorage.removeItem('wc2026_user');
       localStorage.removeItem('wc2026_displayName');
+      localStorage.removeItem('wc2026_group');
       currentUser = null;
     }
   });
 }
+
+// Fetch live scores regardless of auth state
+fetchLiveScores();
+setInterval(fetchLiveScores, 60000);
 </script>
 </body>
 </html>
