@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WC 2026 Predictor ⚽</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --primary: #5D1049;
+      --primary-light: #8E1C6A;
+      --accent: #E4B04A;
+      --bg: #0f0f13;
+      --card: #1a1a22;
+      --card-hover: #222230;
+      --text: #ffffff;
+      --text-dim: #9a9ab0;
+      --border: #2a2a3a;
+      --green: #34d399;
+      --red: #f87171;
+      --gold: #fbbf24;
+      --silver: #9ca3af;
+      --bronze: #d97706;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      padding: 20px 16px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(93, 16, 73, 0.4);
+      position: relative;
+    }
+
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+    .user-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.1);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      position: absolute;
+      right: 12px;
+      top: 18px;
+    }
+
+    .user-badge .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; }
+
+    .tabs {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 72px;
+      z-index: 99;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 13px 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .screen { display: none; padding: 16px; max-width: 500px; margin: 0 auto; }
+    .screen.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Login */
+    .login-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 80vh; padding: 32px; text-align: center;
+    }
+    .login-screen .trophy { font-size: 64px; margin-bottom: 16px; }
+    .login-screen h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .login-screen > p { color: var(--text-dim); font-size: 14px; margin-bottom: 32px; max-width: 300px; }
+
+    .input-group { width: 100%; max-width: 300px; margin-bottom: 16px; }
+    .input-group input {
+      width: 100%; padding: 14px 16px; border: 1px solid var(--border);
+      border-radius: 12px; background: var(--card); color: var(--text);
+      font-size: 16px; outline: none; transition: border-color 0.2s;
+    }
+    .input-group input:focus { border-color: var(--accent); }
+    .input-group input::placeholder { color: var(--text-dim); }
+
+    .btn {
+      padding: 14px 32px; border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; width: 100%; max-width: 300px;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(228,176,74,0.3); }
+
+    .section-label {
+      font-size: 12px; font-weight: 600; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 12px; margin-top: 20px;
+    }
+    .section-label:first-child { margin-top: 8px; }
+
+    /* Match card */
+    .match-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 18px; margin-bottom: 12px; transition: all 0.2s;
+    }
+    .match-card.predicted { border-color: rgba(52, 211, 153, 0.4); }
+
+    .match-meta { text-align: center; margin-bottom: 4px; }
+    .match-meta .time { font-size: 11px; color: var(--text-dim); }
+    .match-meta .group-tag {
+      font-size: 10px; background: var(--border); padding: 2px 8px;
+      border-radius: 4px; display: inline-block; margin-bottom: 6px;
+    }
+    .match-meta .venue { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+    .match-teams { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; }
+    .team { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+    .team-flag {
+      width: 44px; height: 44px; border-radius: 50%; background: var(--card-hover);
+      display: flex; align-items: center; justify-content: center; font-size: 26px;
+      border: 2px solid var(--border);
+    }
+    .team-name { font-size: 12px; font-weight: 600; text-align: center; }
+    .vs { font-size: 11px; color: var(--text-dim); font-weight: 600; padding: 0 8px; }
+
+    .predict-btns { display: flex; gap: 8px; margin-top: 14px; }
+    .predict-btn {
+      flex: 1; padding: 11px 6px; border: 1px solid var(--border); border-radius: 10px;
+      background: transparent; color: var(--text); font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .predict-btn:hover { border-color: var(--accent); background: rgba(228,176,74,0.08); }
+    .predict-btn.selected { border-color: var(--accent); background: var(--accent); color: #000; font-weight: 700; }
+
+    .prediction-status { text-align: center; font-size: 12px; color: var(--green); margin-top: 10px; font-weight: 500; }
+
+    /* Leaderboard */
+    .lb-item {
+      display: flex; align-items: center; padding: 12px 14px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; gap: 12px;
+    }
+    .lb-item.top-1 { border-color: var(--gold); background: rgba(251,191,36,0.05); }
+    .lb-item.top-2 { border-color: var(--silver); background: rgba(156,163,175,0.04); }
+    .lb-item.top-3 { border-color: var(--bronze); background: rgba(217,119,6,0.04); }
+
+    .rank {
+      width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 700; background: var(--card-hover); flex-shrink: 0;
+    }
+    .top-1 .rank { background: var(--gold); color: #000; }
+    .top-2 .rank { background: var(--silver); color: #000; }
+    .top-3 .rank { background: var(--bronze); color: #fff; }
+
+    .lb-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .lb-you { font-size: 10px; color: var(--accent); margin-left: 4px; }
+    .lb-stats { text-align: right; }
+    .lb-pts { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .lb-record { font-size: 10px; color: var(--text-dim); }
+
+    /* Results */
+    .result-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 18px; margin-bottom: 10px;
+    }
+    .result-teams { display: flex; align-items: center; justify-content: space-between; }
+    .result-team { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; }
+    .result-team.winner { font-weight: 700; color: var(--green); }
+    .result-team .flag { font-size: 22px; }
+    .result-vs { font-size: 11px; color: var(--text-dim); padding: 0 10px; font-weight: 600; }
+    .result-bottom {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+      font-size: 11px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .pick-correct { color: var(--green); font-weight: 600; }
+    .pick-wrong { color: var(--red); font-weight: 600; }
+
+    /* Admin */
+    .admin-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; margin-bottom: 10px;
+    }
+    .admin-card h4 { font-size: 13px; margin-bottom: 10px; }
+    .admin-btns { display: flex; gap: 6px; }
+    .admin-btn {
+      flex: 1; padding: 9px 4px; border: 1px solid var(--border); border-radius: 8px;
+      background: transparent; color: var(--text); font-size: 11px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .admin-btn:hover { border-color: var(--green); background: rgba(52,211,153,0.08); }
+    .admin-btn.done { border-color: var(--green); background: var(--green); color: #000; font-weight: 600; }
+
+    /* Share */
+    .share-banner {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-radius: 12px; padding: 16px; text-align: center; margin: 16px 0;
+    }
+    .share-banner p { font-size: 13px; margin-bottom: 10px; opacity: 0.9; }
+    .share-btn { background: white; color: var(--primary); padding: 10px 24px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+    .empty { text-align: center; padding: 48px 16px; color: var(--text-dim); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    .date-divider {
+      font-size: 13px; font-weight: 600; color: var(--accent);
+      margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .date-divider:first-child { margin-top: 4px; }
+
+    .player-count { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 12px; }
+
+    .rules {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; margin-top: 16px; font-size: 12px; color: var(--text-dim); line-height: 1.8;
+    }
+    .rules strong { color: var(--text); }
+
+    .logout-btn {
+      display: block; margin: 24px auto 0; padding: 8px 16px; background: none;
+      border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim);
+      font-size: 11px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="login-view">
+  <div class="header">
+    <h1>⚽ FIFA World Cup 2026</h1>
+    <p>Prediction Game</p>
+  </div>
+  <div class="login-screen">
+    <div class="trophy">🏆</div>
+    <h2>Predict & Win!</h2>
+    <p>Predict match winners with your friends. 2 points for every correct prediction. Top the leaderboard!</p>
+    <div class="input-group">
+      <input type="text" id="name-input" placeholder="Your name" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
+    </div>
+    <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
+    <p class="player-count" id="player-count"></p>
+    <div class="rules">
+      <strong>How it works:</strong><br>
+      ✅ Predict the winner (or Draw) before each match<br>
+      🏆 Correct prediction = <strong>2 points</strong><br>
+      ❌ Wrong prediction = 0 points<br>
+      📊 Leaderboard updates in real-time<br>
+      👑 Top predictor wins bragging rights!
+    </div>
+  </div>
+</div>
+
+<div id="app-view" style="display:none;">
+  <div class="header">
+    <h1>⚽ WC 2026 Predictor</h1>
+    <p id="header-date"></p>
+    <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="predict" onclick="switchTab('predict')">Predict</div>
+    <div class="tab" data-tab="leaderboard" onclick="switchTab('leaderboard')">Leaderboard</div>
+    <div class="tab" data-tab="results" onclick="switchTab('results')">Results</div>
+    <div class="tab" data-tab="admin" onclick="switchTab('admin')">Admin</div>
+  </div>
+
+  <div class="screen active" id="tab-predict"></div>
+  <div class="screen" id="tab-leaderboard"></div>
+  <div class="screen" id="tab-results"></div>
+  <div class="screen" id="tab-admin">
+    <div class="section-label">Set Results (Admin Only)</div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Tap the winner after each match. This updates everyone's scores instantly.</p>
+    <div id="admin-list"></div>
+  </div>
+</div>
+
+<script>
+// ========== FIREBASE CONFIG ==========
+// REPLACE THIS with your Firebase project config
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ========== REAL FIFA WORLD CUP 2026 FIXTURES ==========
+const MATCHES = [
+  // Matchday 1
+  { id: 'md1_01', team1: 'Mexico', team2: 'South Africa', flag1: '🇲🇽', flag2: '🇿🇦', group: 'Group A', date: '2026-06-12', time: 'Jun 12, 12:30 AM IST', venue: 'Estadio Azteca' },
+  { id: 'md1_02', team1: 'South Korea', team2: 'Czech Republic', flag1: '🇰🇷', flag2: '🇨🇿', group: 'Group A', date: '2026-06-12', time: 'Jun 12, 7:30 AM IST', venue: '' },
+  { id: 'md1_03', team1: 'Canada', team2: 'Bosnia & Herzegovina', flag1: '🇨🇦', flag2: '🇧🇦', group: 'Group B', date: '2026-06-13', time: 'Jun 13, 12:30 AM IST', venue: 'BMO Field, Toronto' },
+  { id: 'md1_04', team1: 'United States', team2: 'Paraguay', flag1: '🇺🇸', flag2: '🇵🇾', group: 'Group D', date: '2026-06-13', time: 'Jun 13, 6:30 AM IST', venue: 'SoFi Stadium, LA' },
+  { id: 'md1_05', team1: 'Qatar', team2: 'Switzerland', flag1: '🇶🇦', flag2: '🇨🇭', group: 'Group B', date: '2026-06-14', time: 'Jun 14, 12:30 AM IST', venue: 'San Francisco' },
+  { id: 'md1_06', team1: 'Brazil', team2: 'Morocco', flag1: '🇧🇷', flag2: '🇲🇦', group: 'Group C', date: '2026-06-14', time: 'Jun 14, 3:30 AM IST', venue: 'MetLife Stadium' },
+  { id: 'md1_07', team1: 'Haiti', team2: 'Scotland', flag1: '🇭🇹', flag2: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', group: 'Group C', date: '2026-06-14', time: 'Jun 14, 6:30 AM IST', venue: 'Boston' },
+  { id: 'md1_08', team1: 'Australia', team2: 'Turkey', flag1: '🇦🇺', flag2: '🇹🇷', group: 'Group D', date: '2026-06-14', time: 'Jun 14, 9:30 AM IST', venue: 'Vancouver' },
+  { id: 'md1_09', team1: 'Germany', team2: 'Curacao', flag1: '🇩🇪', flag2: '🇨🇼', group: 'Group E', date: '2026-06-14', time: 'Jun 14, 10:30 PM IST', venue: 'Houston' },
+  { id: 'md1_10', team1: 'Netherlands', team2: 'Japan', flag1: '🇳🇱', flag2: '🇯🇵', group: 'Group F', date: '2026-06-15', time: 'Jun 15, 1:30 AM IST', venue: 'Dallas' },
+  { id: 'md1_11', team1: 'Ivory Coast', team2: 'Ecuador', flag1: '🇨🇮', flag2: '🇪🇨', group: 'Group E', date: '2026-06-15', time: 'Jun 15, 4:30 AM IST', venue: 'Philadelphia' },
+  { id: 'md1_12', team1: 'Sweden', team2: 'Tunisia', flag1: '🇸🇪', flag2: '🇹🇳', group: 'Group F', date: '2026-06-15', time: 'Jun 15, 7:30 AM IST', venue: '' },
+  { id: 'md1_13', team1: 'Spain', team2: 'Cape Verde', flag1: '🇪🇸', flag2: '🇨🇻', group: 'Group H', date: '2026-06-15', time: 'Jun 15, 9:30 PM IST', venue: 'Atlanta' },
+  { id: 'md1_14', team1: 'Belgium', team2: 'Egypt', flag1: '🇧🇪', flag2: '🇪🇬', group: 'Group G', date: '2026-06-16', time: 'Jun 16, 12:30 AM IST', venue: 'Seattle' },
+  { id: 'md1_15', team1: 'Saudi Arabia', team2: 'Uruguay', flag1: '🇸🇦', flag2: '🇺🇾', group: 'Group H', date: '2026-06-16', time: 'Jun 16, 3:30 AM IST', venue: 'Miami' },
+  { id: 'md1_16', team1: 'Iran', team2: 'New Zealand', flag1: '🇮🇷', flag2: '🇳🇿', group: 'Group G', date: '2026-06-16', time: 'Jun 16, 6:30 AM IST', venue: 'LA' },
+  { id: 'md1_17', team1: 'France', team2: 'Senegal', flag1: '🇫🇷', flag2: '🇸🇳', group: 'Group I', date: '2026-06-17', time: 'Jun 17, 12:30 AM IST', venue: 'MetLife Stadium' },
+  { id: 'md1_18', team1: 'Iraq', team2: 'Norway', flag1: '🇮🇶', flag2: '🇳🇴', group: 'Group I', date: '2026-06-17', time: 'Jun 17, 3:30 AM IST', venue: 'Boston' },
+  { id: 'md1_19', team1: 'Argentina', team2: 'Algeria', flag1: '🇦🇷', flag2: '🇩🇿', group: 'Group J', date: '2026-06-17', time: 'Jun 17, 6:30 AM IST', venue: 'Kansas City' },
+  { id: 'md1_20', team1: 'Austria', team2: 'Jordan', flag1: '🇦🇹', flag2: '🇯🇴', group: 'Group J', date: '2026-06-17', time: 'Jun 17, 9:30 AM IST', venue: 'San Francisco' },
+  { id: 'md1_21', team1: 'Portugal', team2: 'DR Congo', flag1: '🇵🇹', flag2: '🇨🇩', group: 'Group K', date: '2026-06-17', time: 'Jun 17, 10:30 PM IST', venue: 'Houston' },
+  { id: 'md1_22', team1: 'England', team2: 'Croatia', flag1: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', flag2: '🇭🇷', group: 'Group L', date: '2026-06-18', time: 'Jun 18, 1:30 AM IST', venue: 'Dallas' },
+  { id: 'md1_23', team1: 'Ghana', team2: 'Panama', flag1: '🇬🇭', flag2: '🇵🇦', group: 'Group L', date: '2026-06-18', time: 'Jun 18, 4:30 AM IST', venue: 'Toronto' },
+  { id: 'md1_24', team1: 'Uzbekistan', team2: 'Colombia', flag1: '🇺🇿', flag2: '🇨🇴', group: 'Group K', date: '2026-06-18', time: 'Jun 18, 7:30 AM IST', venue: 'Mexico City' },
+
+  // Matchday 2
+  { id: 'md2_01', team1: 'Czech Republic', team2: 'South Africa', flag1: '🇨🇿', flag2: '🇿🇦', group: 'Group A', date: '2026-06-18', time: 'Jun 18, 9:30 PM IST', venue: 'Atlanta' },
+  { id: 'md2_02', team1: 'Switzerland', team2: 'Bosnia & Herzegovina', flag1: '🇨🇭', flag2: '🇧🇦', group: 'Group B', date: '2026-06-19', time: 'Jun 19, 12:30 AM IST', venue: 'LA' },
+  { id: 'md2_03', team1: 'Canada', team2: 'Qatar', flag1: '🇨🇦', flag2: '🇶🇦', group: 'Group B', date: '2026-06-19', time: 'Jun 19, 3:30 AM IST', venue: 'Vancouver' },
+  { id: 'md2_04', team1: 'Mexico', team2: 'South Korea', flag1: '🇲🇽', flag2: '🇰🇷', group: 'Group A', date: '2026-06-19', time: 'Jun 19, 6:30 AM IST', venue: '' },
+  { id: 'md2_05', team1: 'United States', team2: 'Australia', flag1: '🇺🇸', flag2: '🇦🇺', group: 'Group D', date: '2026-06-20', time: 'Jun 20, 12:30 AM IST', venue: 'Seattle' },
+  { id: 'md2_06', team1: 'Scotland', team2: 'Morocco', flag1: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', flag2: '🇲🇦', group: 'Group C', date: '2026-06-20', time: 'Jun 20, 3:30 AM IST', venue: 'Boston' },
+  { id: 'md2_07', team1: 'Brazil', team2: 'Haiti', flag1: '🇧🇷', flag2: '🇭🇹', group: 'Group C', date: '2026-06-20', time: 'Jun 20, 6:00 AM IST', venue: 'Philadelphia' },
+  { id: 'md2_08', team1: 'Turkey', team2: 'Paraguay', flag1: '🇹🇷', flag2: '🇵🇾', group: 'Group D', date: '2026-06-20', time: 'Jun 20, 8:30 AM IST', venue: 'San Francisco' },
+  { id: 'md2_09', team1: 'Netherlands', team2: 'Sweden', flag1: '🇳🇱', flag2: '🇸🇪', group: 'Group F', date: '2026-06-20', time: 'Jun 20, 10:30 PM IST', venue: 'Houston' },
+  { id: 'md2_10', team1: 'Germany', team2: 'Ivory Coast', flag1: '🇩🇪', flag2: '🇨🇮', group: 'Group E', date: '2026-06-21', time: 'Jun 21, 1:30 AM IST', venue: 'Toronto' },
+  { id: 'md2_11', team1: 'Ecuador', team2: 'Curacao', flag1: '🇪🇨', flag2: '🇨🇼', group: 'Group E', date: '2026-06-21', time: 'Jun 21, 5:30 AM IST', venue: 'Kansas City' },
+  { id: 'md2_12', team1: 'Tunisia', team2: 'Japan', flag1: '🇹🇳', flag2: '🇯🇵', group: 'Group F', date: '2026-06-21', time: 'Jun 21, 9:30 AM IST', venue: '' },
+  { id: 'md2_13', team1: 'Spain', team2: 'Saudi Arabia', flag1: '🇪🇸', flag2: '🇸🇦', group: 'Group H', date: '2026-06-21', time: 'Jun 21, 9:30 PM IST', venue: 'Atlanta' },
+  { id: 'md2_14', team1: 'Belgium', team2: 'Iran', flag1: '🇧🇪', flag2: '🇮🇷', group: 'Group G', date: '2026-06-22', time: 'Jun 22, 12:30 AM IST', venue: 'LA' },
+  { id: 'md2_15', team1: 'Uruguay', team2: 'Cape Verde', flag1: '🇺🇾', flag2: '🇨🇻', group: 'Group H', date: '2026-06-22', time: 'Jun 22, 3:30 AM IST', venue: 'Miami' },
+  { id: 'md2_16', team1: 'New Zealand', team2: 'Egypt', flag1: '🇳🇿', flag2: '🇪🇬', group: 'Group G', date: '2026-06-22', time: 'Jun 22, 6:30 AM IST', venue: 'Vancouver' },
+  { id: 'md2_17', team1: 'Argentina', team2: 'Austria', flag1: '🇦🇷', flag2: '🇦🇹', group: 'Group J', date: '2026-06-22', time: 'Jun 22, 10:30 PM IST', venue: 'Dallas' },
+  { id: 'md2_18', team1: 'France', team2: 'Iraq', flag1: '🇫🇷', flag2: '🇮🇶', group: 'Group I', date: '2026-06-23', time: 'Jun 23, 2:30 AM IST', venue: 'Philadelphia' },
+  { id: 'md2_19', team1: 'Norway', team2: 'Senegal', flag1: '🇳🇴', flag2: '🇸🇳', group: 'Group I', date: '2026-06-23', time: 'Jun 23, 5:30 AM IST', venue: 'MetLife Stadium' },
+  { id: 'md2_20', team1: 'Jordan', team2: 'Algeria', flag1: '🇯🇴', flag2: '🇩🇿', group: 'Group J', date: '2026-06-23', time: 'Jun 23, 8:30 AM IST', venue: 'San Francisco' },
+  { id: 'md2_21', team1: 'Portugal', team2: 'Uzbekistan', flag1: '🇵🇹', flag2: '🇺🇿', group: 'Group K', date: '2026-06-23', time: 'Jun 23, 10:30 PM IST', venue: 'Houston' },
+  { id: 'md2_22', team1: 'England', team2: 'Ghana', flag1: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', flag2: '🇬🇭', group: 'Group L', date: '2026-06-24', time: 'Jun 24, 1:30 AM IST', venue: 'Boston' },
+  { id: 'md2_23', team1: 'Panama', team2: 'Croatia', flag1: '🇵🇦', flag2: '🇭🇷', group: 'Group L', date: '2026-06-24', time: 'Jun 24, 4:30 AM IST', venue: 'Toronto' },
+  { id: 'md2_24', team1: 'Colombia', team2: 'DR Congo', flag1: '🇨🇴', flag2: '🇨🇩', group: 'Group K', date: '2026-06-24', time: 'Jun 24, 7:30 AM IST', venue: '' },
+
+  // Matchday 3 (simultaneous kickoffs)
+  { id: 'md3_01', team1: 'Switzerland', team2: 'Canada', flag1: '🇨🇭', flag2: '🇨🇦', group: 'Group B', date: '2026-06-25', time: 'Jun 25, 12:30 AM IST', venue: 'Vancouver' },
+  { id: 'md3_02', team1: 'Bosnia & Herzegovina', team2: 'Qatar', flag1: '🇧🇦', flag2: '🇶🇦', group: 'Group B', date: '2026-06-25', time: 'Jun 25, 12:30 AM IST', venue: 'Seattle' },
+  { id: 'md3_03', team1: 'Scotland', team2: 'Brazil', flag1: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', flag2: '🇧🇷', group: 'Group C', date: '2026-06-25', time: 'Jun 25, 3:30 AM IST', venue: 'Miami' },
+  { id: 'md3_04', team1: 'Morocco', team2: 'Haiti', flag1: '🇲🇦', flag2: '🇭🇹', group: 'Group C', date: '2026-06-25', time: 'Jun 25, 3:30 AM IST', venue: 'Atlanta' },
+  { id: 'md3_05', team1: 'Czech Republic', team2: 'Mexico', flag1: '🇨🇿', flag2: '🇲🇽', group: 'Group A', date: '2026-06-25', time: 'Jun 25, 6:30 AM IST', venue: 'Mexico City' },
+  { id: 'md3_06', team1: 'South Africa', team2: 'South Korea', flag1: '🇿🇦', flag2: '🇰🇷', group: 'Group A', date: '2026-06-25', time: 'Jun 25, 6:30 AM IST', venue: '' },
+  { id: 'md3_07', team1: 'Curacao', team2: 'Ivory Coast', flag1: '🇨🇼', flag2: '🇨🇮', group: 'Group E', date: '2026-06-26', time: 'Jun 26, 1:30 AM IST', venue: 'Philadelphia' },
+  { id: 'md3_08', team1: 'Ecuador', team2: 'Germany', flag1: '🇪🇨', flag2: '🇩🇪', group: 'Group E', date: '2026-06-26', time: 'Jun 26, 1:30 AM IST', venue: 'MetLife Stadium' },
+  { id: 'md3_09', team1: 'Japan', team2: 'Sweden', flag1: '🇯🇵', flag2: '🇸🇪', group: 'Group F', date: '2026-06-26', time: 'Jun 26, 4:30 AM IST', venue: 'Dallas' },
+  { id: 'md3_10', team1: 'Tunisia', team2: 'Netherlands', flag1: '🇹🇳', flag2: '🇳🇱', group: 'Group F', date: '2026-06-26', time: 'Jun 26, 4:30 AM IST', venue: 'Kansas City' },
+  { id: 'md3_11', team1: 'Turkey', team2: 'United States', flag1: '🇹🇷', flag2: '🇺🇸', group: 'Group D', date: '2026-06-26', time: 'Jun 26, 7:30 AM IST', venue: 'LA' },
+  { id: 'md3_12', team1: 'Paraguay', team2: 'Australia', flag1: '🇵🇾', flag2: '🇦🇺', group: 'Group D', date: '2026-06-26', time: 'Jun 26, 7:30 AM IST', venue: 'San Francisco' },
+  { id: 'md3_13', team1: 'Norway', team2: 'France', flag1: '🇳🇴', flag2: '🇫🇷', group: 'Group I', date: '2026-06-27', time: 'Jun 27, 12:30 AM IST', venue: 'Boston' },
+  { id: 'md3_14', team1: 'Senegal', team2: 'Iraq', flag1: '🇸🇳', flag2: '🇮🇶', group: 'Group I', date: '2026-06-27', time: 'Jun 27, 12:30 AM IST', venue: 'Toronto' },
+  { id: 'md3_15', team1: 'Cape Verde', team2: 'Saudi Arabia', flag1: '🇨🇻', flag2: '🇸🇦', group: 'Group H', date: '2026-06-27', time: 'Jun 27, 5:30 AM IST', venue: 'Houston' },
+  { id: 'md3_16', team1: 'Uruguay', team2: 'Spain', flag1: '🇺🇾', flag2: '🇪🇸', group: 'Group H', date: '2026-06-27', time: 'Jun 27, 5:30 AM IST', venue: '' },
+  { id: 'md3_17', team1: 'Egypt', team2: 'Iran', flag1: '🇪🇬', flag2: '🇮🇷', group: 'Group G', date: '2026-06-27', time: 'Jun 27, 8:30 AM IST', venue: 'Seattle' },
+  { id: 'md3_18', team1: 'New Zealand', team2: 'Belgium', flag1: '🇳🇿', flag2: '🇧🇪', group: 'Group G', date: '2026-06-27', time: 'Jun 27, 8:30 AM IST', venue: 'Vancouver' },
+  { id: 'md3_19', team1: 'Panama', team2: 'England', flag1: '🇵🇦', flag2: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', group: 'Group L', date: '2026-06-28', time: 'Jun 28, 2:30 AM IST', venue: 'MetLife Stadium' },
+  { id: 'md3_20', team1: 'Croatia', team2: 'Ghana', flag1: '🇭🇷', flag2: '🇬🇭', group: 'Group L', date: '2026-06-28', time: 'Jun 28, 2:30 AM IST', venue: 'Philadelphia' },
+  { id: 'md3_21', team1: 'Colombia', team2: 'Portugal', flag1: '🇨🇴', flag2: '🇵🇹', group: 'Group K', date: '2026-06-28', time: 'Jun 28, 5:00 AM IST', venue: 'Miami' },
+  { id: 'md3_22', team1: 'DR Congo', team2: 'Uzbekistan', flag1: '🇨🇩', flag2: '🇺🇿', group: 'Group K', date: '2026-06-28', time: 'Jun 28, 5:00 AM IST', venue: 'Atlanta' },
+  { id: 'md3_23', team1: 'Algeria', team2: 'Austria', flag1: '🇩🇿', flag2: '🇦🇹', group: 'Group J', date: '2026-06-28', time: 'Jun 28, 7:30 AM IST', venue: 'Kansas City' },
+  { id: 'md3_24', team1: 'Jordan', team2: 'Argentina', flag1: '🇯🇴', flag2: '🇦🇷', group: 'Group J', date: '2026-06-28', time: 'Jun 28, 7:30 AM IST', venue: 'Dallas' },
+];
+
+// ========== STATE ==========
+let currentUser = localStorage.getItem('wc2026_user');
+let predictions = {};
+let results = {};
+let players = {};
+
+// ========== FIREBASE LISTENERS ==========
+function initListeners() {
+  db.ref('predictions').on('value', snap => {
+    predictions = snap.val() || {};
+    render();
+  });
+
+  db.ref('results').on('value', snap => {
+    results = snap.val() || {};
+    render();
+  });
+
+  db.ref('players').on('value', snap => {
+    players = snap.val() || {};
+    const count = Object.keys(players).length;
+    const el = document.getElementById('player-count');
+    if (el) el.textContent = count > 0 ? `${count} player${count > 1 ? 's' : ''} already joined!` : '';
+    render();
+  });
+}
+
+// ========== AUTH ==========
+function joinGame() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { document.getElementById('name-input').focus(); return; }
+  currentUser = name;
+  localStorage.setItem('wc2026_user', name);
+  db.ref('players/' + sanitizeKey(name)).set({ name: name, joined: new Date().toISOString() });
+  showApp();
+}
+
+function sanitizeKey(str) {
+  return str.replace(/[.#$\/\[\]]/g, '_');
+}
+
+function showApp() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'block';
+  document.getElementById('display-name').textContent = currentUser;
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+  render();
+}
+
+function logout() {
+  localStorage.removeItem('wc2026_user');
+  currentUser = null;
+  document.getElementById('login-view').style.display = 'block';
+  document.getElementById('app-view').style.display = 'none';
+}
+
+// ========== TABS ==========
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ========== RENDER ==========
+function render() {
+  if (!currentUser) return;
+  renderPredict();
+  renderLeaderboard();
+  renderResults();
+  renderAdmin();
+}
+
+function renderPredict() {
+  const container = document.getElementById('tab-predict');
+  const today = new Date().toISOString().split('T')[0];
+
+  const upcoming = MATCHES.filter(m => !results[m.id]);
+  const grouped = {};
+  upcoming.forEach(m => {
+    if (!grouped[m.date]) grouped[m.date] = [];
+    grouped[m.date].push(m);
+  });
+
+  let html = '';
+  const dates = Object.keys(grouped).sort();
+
+  if (dates.length === 0) {
+    html = '<div class="empty"><div class="empty-icon">🎉</div><p>All matches completed!<br>Check the Leaderboard for final standings.</p></div>';
+  } else {
+    dates.forEach(date => {
+      const d = new Date(date + 'T00:00:00');
+      const isToday = date === today;
+      const label = isToday ? '📅 Today' : d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+      html += `<div class="date-divider">${label}</div>`;
+
+      grouped[date].forEach(match => {
+        const key = sanitizeKey(currentUser) + '_' + match.id;
+        const userPick = predictions[key];
+        const isPredicted = !!userPick;
+
+        html += `
+          <div class="match-card ${isPredicted ? 'predicted' : ''}">
+            <div class="match-meta">
+              <span class="group-tag">${match.group}</span>
+              <div class="time">${match.time}</div>
+              ${match.venue ? `<div class="venue">${match.venue}</div>` : ''}
+            </div>
+            <div class="match-teams">
+              <div class="team">
+                <div class="team-flag">${match.flag1}</div>
+                <div class="team-name">${match.team1}</div>
+              </div>
+              <div class="vs">VS</div>
+              <div class="team">
+                <div class="team-flag">${match.flag2}</div>
+                <div class="team-name">${match.team2}</div>
+              </div>
+            </div>
+            ${isPredicted
+              ? `<div class="prediction-status">✓ Predicted: ${userPick}</div>`
+              : `<div class="predict-btns">
+                  <button class="predict-btn" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
+                  <button class="predict-btn" onclick="predict('${match.id}','Draw')">Draw</button>
+                  <button class="predict-btn" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
+                </div>`
+            }
+          </div>`;
+      });
+    });
+  }
+
+  html += `
+    <div class="share-banner">
+      <p>📲 Share with your WhatsApp group!</p>
+      <button class="share-btn" onclick="shareGame()">Share Link</button>
+    </div>
+    <button class="logout-btn" onclick="logout()">Switch Player</button>`;
+
+  container.innerHTML = html;
+}
+
+function renderLeaderboard() {
+  const container = document.getElementById('tab-leaderboard');
+  const scores = {};
+
+  Object.keys(players).forEach(key => {
+    const name = players[key].name || key;
+    scores[name] = { points: 0, correct: 0, total: 0 };
+  });
+
+  Object.keys(predictions).forEach(key => {
+    const lastUnderscore = key.lastIndexOf('_');
+    const playerKey = key.substring(0, lastUnderscore);
+    const matchId = key.substring(lastUnderscore + 1);
+
+    const playerName = players[playerKey] ? players[playerKey].name : playerKey;
+
+    if (results[matchId] && scores[playerName] !== undefined) {
+      scores[playerName].total++;
+      if (predictions[key] === results[matchId]) {
+        scores[playerName].points += 2;
+        scores[playerName].correct++;
+      }
+    }
+  });
+
+  const sorted = Object.entries(scores).sort((a, b) => b[1].points - a[1].points || b[1].correct - a[1].correct);
+  const totalResults = Object.keys(results).length;
+
+  let html = `<div class="section-label">Standings — ${totalResults} match${totalResults !== 1 ? 'es' : ''} decided</div>`;
+
+  if (sorted.length === 0) {
+    html += '<div class="empty"><div class="empty-icon">📊</div><p>No players yet.</p></div>';
+  } else {
+    sorted.forEach(([name, stats], i) => {
+      const cls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
+      const you = name === currentUser ? '<span class="lb-you">(You)</span>' : '';
+      html += `
+        <div class="lb-item ${cls}">
+          <div class="rank">${i + 1}</div>
+          <div class="lb-name">${name}${you}</div>
+          <div class="lb-stats">
+            <div class="lb-pts">${stats.points} pts</div>
+            <div class="lb-record">${stats.correct}/${stats.total} correct</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function renderResults() {
+  const container = document.getElementById('tab-results');
+  const completed = MATCHES.filter(m => results[m.id]);
+
+  if (completed.length === 0) {
+    container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p>No results yet.<br>Check back after matches are played!</p></div>';
+    return;
+  }
+
+  let html = '<div class="section-label">Completed Matches</div>';
+  [...completed].reverse().forEach(match => {
+    const winner = results[match.id];
+    const userKey = sanitizeKey(currentUser) + '_' + match.id;
+    const userPick = predictions[userKey];
+    const isCorrect = userPick === winner;
+
+    html += `
+      <div class="result-card">
+        <div class="result-teams">
+          <div class="result-team ${winner === match.team1 ? 'winner' : ''}">
+            <span class="flag">${match.flag1}</span>
+            <span>${match.team1}</span>
+          </div>
+          <div class="result-vs">vs</div>
+          <div class="result-team ${winner === match.team2 ? 'winner' : ''}">
+            <span>${match.team2}</span>
+            <span class="flag">${match.flag2}</span>
+          </div>
+        </div>
+        <div class="result-bottom">
+          <span>Your pick: ${userPick || '—'}</span>
+          ${userPick
+            ? `<span class="${isCorrect ? 'pick-correct' : 'pick-wrong'}">${isCorrect ? '+2 pts ✓' : '0 pts ✗'}</span>`
+            : '<span style="color:var(--text-dim)">No prediction</span>'
+          }
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderAdmin() {
+  const container = document.getElementById('admin-list');
+  let html = '';
+
+  MATCHES.forEach(match => {
+    const result = results[match.id];
+    html += `
+      <div class="admin-card">
+        <h4>${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2} <span style="font-weight:400;color:var(--text-dim);font-size:10px;">${match.time}</span></h4>
+        <div class="admin-btns">
+          <button class="admin-btn ${result === match.team1 ? 'done' : ''}" onclick="setResult('${match.id}','${match.team1}')">${match.team1}</button>
+          <button class="admin-btn ${result === 'Draw' ? 'done' : ''}" onclick="setResult('${match.id}','Draw')">Draw</button>
+          <button class="admin-btn ${result === match.team2 ? 'done' : ''}" onclick="setResult('${match.id}','${match.team2}')">${match.team2}</button>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ========== ACTIONS ==========
+function predict(matchId, pick) {
+  const key = sanitizeKey(currentUser) + '_' + matchId;
+  db.ref('predictions/' + key).set(pick);
+}
+
+function setResult(matchId, winner) {
+  db.ref('results/' + matchId).set(winner);
+}
+
+function shareGame() {
+  const url = window.location.href;
+  const text = `⚽🏆 *FIFA World Cup 2026 — Prediction Game!*
+
+Predict match winners & compete with friends!
+✅ 2 points per correct prediction
+📊 Live leaderboard
+🔥 ${Object.keys(players).length} players already in!
+
+👉 Join here: ${url}`;
+
+  if (navigator.share) {
+    navigator.share({ title: 'WC 2026 Predictor', text: text, url: url });
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+}
+
+// ========== INIT ==========
+initListeners();
+
+if (currentUser) {
+  db.ref('players/' + sanitizeKey(currentUser)).once('value', snap => {
+    if (snap.exists()) {
+      showApp();
+    } else {
+      localStorage.removeItem('wc2026_user');
+      currentUser = null;
+    }
+  });
+}
+</script>
+</body>
+</html>
