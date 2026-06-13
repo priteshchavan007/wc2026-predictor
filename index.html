@@ -259,10 +259,7 @@
     <h2>Predict & Win!</h2>
     <p>Predict match winners with your friends. 2 points for every correct prediction. Top the leaderboard!</p>
     <div class="input-group">
-      <input type="text" id="name-input" placeholder="Your name" autocomplete="off">
-    </div>
-    <div class="input-group">
-      <input type="email" id="email-input" placeholder="your.name@salesforce.com" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
+      <input type="text" id="name-input" placeholder="Choose a unique name" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
     </div>
     <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;"></p>
     <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
@@ -428,35 +425,35 @@ function initListeners() {
 // ========== AUTH ==========
 function joinGame() {
   const name = document.getElementById('name-input').value.trim();
-  const email = document.getElementById('email-input').value.trim().toLowerCase();
   const errorEl = document.getElementById('login-error');
   errorEl.style.display = 'none';
 
   if (!name) { document.getElementById('name-input').focus(); return; }
-  if (!email) { document.getElementById('email-input').focus(); return; }
 
-  if (!email.endsWith('@salesforce.com')) {
-    errorEl.textContent = 'Please use your @salesforce.com email address.';
-    errorEl.style.display = 'block';
-    return;
-  }
+  const key = sanitizeKey(name);
 
-  // Use email prefix as unique key
-  const emailKey = sanitizeKey(email.replace('@salesforce.com', ''));
-
-  // Check if email is already registered with a different name
-  db.ref('players/' + emailKey).once('value', snap => {
-    if (snap.exists() && snap.val().name !== name) {
-      errorEl.textContent = 'This email is already registered as "' + snap.val().name + '".';
-      errorEl.style.display = 'block';
-      return;
+  db.ref('players/' + key).once('value', snap => {
+    if (snap.exists()) {
+      // Name exists — check if it's the same person returning
+      const stored = snap.val();
+      if (stored.name === name) {
+        // Welcome back
+        currentUser = key;
+        localStorage.setItem('wc2026_user', key);
+        localStorage.setItem('wc2026_displayName', name);
+        showApp();
+      } else {
+        errorEl.textContent = 'This name is already taken. Please choose a different one.';
+        errorEl.style.display = 'block';
+      }
+    } else {
+      // New player
+      currentUser = key;
+      localStorage.setItem('wc2026_user', key);
+      localStorage.setItem('wc2026_displayName', name);
+      db.ref('players/' + key).set({ name: name, joined: new Date().toISOString() });
+      showApp();
     }
-
-    currentUser = emailKey;
-    localStorage.setItem('wc2026_user', emailKey);
-    localStorage.setItem('wc2026_displayName', name);
-    db.ref('players/' + emailKey).set({ name: name, email: email, joined: new Date().toISOString() });
-    showApp();
   });
 }
 
@@ -471,6 +468,56 @@ function showApp() {
   document.getElementById('display-name').textContent = displayName;
   document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
   render();
+}
+
+function changeName() {
+  const newName = prompt('Enter your new unique name:');
+  if (!newName || !newName.trim()) return;
+  const trimmed = newName.trim();
+  const newKey = sanitizeKey(trimmed);
+
+  if (newKey === currentUser) {
+    db.ref('players/' + currentUser + '/name').set(trimmed);
+    localStorage.setItem('wc2026_displayName', trimmed);
+    document.getElementById('display-name').textContent = trimmed;
+    render();
+    return;
+  }
+
+  db.ref('players/' + newKey).once('value', snap => {
+    if (snap.exists()) {
+      alert('That name is already taken. Please choose a different one.');
+      return;
+    }
+
+    // Move predictions to new key
+    const oldKey = currentUser;
+    db.ref('predictions').once('value', predSnap => {
+      const allPreds = predSnap.val() || {};
+      const updates = {};
+
+      Object.keys(allPreds).forEach(k => {
+        if (k.startsWith(oldKey + '_')) {
+          const matchPart = k.substring(oldKey.length + 1);
+          updates[newKey + '_' + matchPart] = allPreds[k];
+          updates[k] = null; // delete old
+        }
+      });
+
+      db.ref('predictions').update(updates).then(() => {
+        // Create new player, remove old
+        db.ref('players/' + newKey).set({ name: trimmed, joined: new Date().toISOString() });
+        db.ref('players/' + oldKey).remove();
+
+        currentUser = newKey;
+        localStorage.setItem('wc2026_user', newKey);
+        localStorage.setItem('wc2026_displayName', trimmed);
+        document.getElementById('display-name').textContent = trimmed;
+        render();
+        alert('Name changed to "' + trimmed + '"!');
+      });
+    });
+  });
 }
 
 function logout() {
@@ -562,6 +609,7 @@ function renderPredict() {
       <p>📲 Share with your WhatsApp group!</p>
       <button class="share-btn" onclick="shareGame()">Share Link</button>
     </div>
+    <button class="logout-btn" onclick="changeName()">Change Name</button>
     <button class="logout-btn" onclick="logout()">Switch Player</button>`;
 
   container.innerHTML = html;
