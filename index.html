@@ -1391,6 +1391,12 @@ function renderResults() {
     const team1Won = winner === match.team1;
     const team2Won = winner === match.team2;
 
+    const apiData = getApiScore(match);
+    const scoreDisplay = apiData && apiData.homeScore !== null
+      ? `${apiData.homeScore} - ${apiData.awayScore}`
+      : '';
+    const isLive = apiData && (apiData.status === 'IN_PLAY' || apiData.status === 'PAUSED');
+
     html += `
       <div class="match-card" style="padding:14px 18px;">
         <div class="match-teams" style="margin:0;">
@@ -1398,7 +1404,13 @@ function renderResults() {
             <div class="team-flag" style="font-size:36px;">${match.flag1}</div>
             <div class="team-name" style="${team1Won ? 'color:var(--green);' : ''}">${match.team1}</div>
           </div>
-          <div class="vs" style="font-size:11px;font-weight:900;color:${!hasResult ? 'var(--text-secondary)' : isDraw ? 'var(--gold)' : 'var(--green)'};">${hasResult ? (isDraw ? 'DRAW' : 'WIN') : 'VS'}</div>
+          <div style="text-align:center;min-width:50px;">
+            ${scoreDisplay
+              ? `<div style="font-size:20px;font-weight:900;color:var(--text);">${scoreDisplay}</div>
+                 <div style="font-size:9px;font-weight:700;color:${isLive ? 'var(--coral)' : 'var(--text-secondary)'};text-transform:uppercase;margin-top:2px;">${isLive ? '● LIVE' : 'FT'}</div>`
+              : `<div class="vs" style="font-size:11px;font-weight:900;color:var(--text-secondary);">VS</div>`
+            }
+          </div>
           <div class="team">
             <div class="team-flag" style="font-size:36px;">${match.flag2}</div>
             <div class="team-name" style="${team2Won ? 'color:var(--green);' : ''}">${match.team2}</div>
@@ -1486,6 +1498,77 @@ const isAdmin = new URLSearchParams(window.location.search).get('admin') === ADM
 if (isAdmin) {
   document.getElementById('admin-tab').style.display = '';
 }
+
+// ========== LIVE SCORES API ==========
+const API_TOKEN = '49b916e7852b422187139132b9cb6ad7';
+let liveScores = {};
+
+async function fetchLiveScores() {
+  try {
+    const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
+      headers: { 'X-Auth-Token': API_TOKEN }
+    });
+    const data = await res.json();
+    const matches = data.matches || [];
+
+    matches.forEach(m => {
+      const homeTeam = m.homeTeam.shortName;
+      const awayTeam = m.awayTeam.shortName;
+      const score = m.score;
+      const status = m.status;
+
+      liveScores[m.id] = {
+        homeTeam, awayTeam, status,
+        homeScore: score.fullTime.home,
+        awayScore: score.fullTime.away,
+        halfHome: score.halfTime.home,
+        halfAway: score.halfTime.away,
+        winner: score.winner
+      };
+
+      // Auto-set result in Firebase when match finishes
+      if (status === 'FINISHED' && score.winner) {
+        const localMatch = findLocalMatch(homeTeam, awayTeam);
+        if (localMatch && !results[localMatch.id]) {
+          let winnerName;
+          if (score.winner === 'HOME_TEAM') winnerName = localMatch.team1;
+          else if (score.winner === 'AWAY_TEAM') winnerName = localMatch.team2;
+          else winnerName = 'Draw';
+          db.ref('results/' + localMatch.id).set(winnerName);
+        }
+      }
+    });
+
+    render();
+  } catch (e) {
+    console.log('Live scores fetch error:', e);
+  }
+}
+
+function findLocalMatch(homeTeam, awayTeam) {
+  return MATCHES.find(m => {
+    const h = m.team1.toLowerCase();
+    const a = m.team2.toLowerCase();
+    const apiH = homeTeam.toLowerCase();
+    const apiA = awayTeam.toLowerCase();
+    return (h.includes(apiH) || apiH.includes(h) || h === apiH) &&
+           (a.includes(apiA) || apiA.includes(a) || a === apiA);
+  });
+}
+
+function getApiScore(match) {
+  for (const [id, data] of Object.entries(liveScores)) {
+    const localMatch = findLocalMatch(data.homeTeam, data.awayTeam);
+    if (localMatch && localMatch.id === match.id) {
+      return data;
+    }
+  }
+  return null;
+}
+
+// Fetch immediately and then every 60 seconds
+fetchLiveScores();
+setInterval(fetchLiveScores, 60000);
 
 // ========== INIT ==========
 initListeners();
