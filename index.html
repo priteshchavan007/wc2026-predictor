@@ -290,7 +290,7 @@
   <div class="screen active" id="tab-predict"></div>
   <div class="screen" id="tab-leaderboard"></div>
   <div class="screen" id="tab-results"></div>
-  <div class="screen" id="tab-admin" style="display:none;">
+  <div class="screen" id="tab-admin">
     <div class="section-label">Set Results (Admin Only)</div>
     <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Tap the winner after each match. This updates everyone's scores instantly.</p>
     <div id="admin-list"></div>
@@ -629,6 +629,7 @@ function renderResults() {
 }
 
 function renderAdmin() {
+  if (!isAdmin) return;
   const container = document.getElementById('admin-list');
   let html = '';
 
@@ -655,6 +656,7 @@ function predict(matchId, pick) {
 }
 
 function setResult(matchId, winner) {
+  if (!isAdmin) return;
   db.ref('results/' + matchId).set(winner);
 }
 
