@@ -1517,25 +1517,23 @@ async function fetchLiveScores() {
       const score = m.score;
       const status = m.status;
 
-      liveScores[m.id] = {
-        homeTeam, awayTeam, status,
+      const localMatch = findLocalMatch(homeTeam, awayTeam);
+      if (!localMatch) return;
+
+      liveScores[localMatch.id] = {
+        status,
         homeScore: score.fullTime.home,
         awayScore: score.fullTime.away,
-        halfHome: score.halfTime.home,
-        halfAway: score.halfTime.away,
         winner: score.winner
       };
 
       // Auto-set result in Firebase when match finishes
-      if (status === 'FINISHED' && score.winner) {
-        const localMatch = findLocalMatch(homeTeam, awayTeam);
-        if (localMatch && !results[localMatch.id]) {
-          let winnerName;
-          if (score.winner === 'HOME_TEAM') winnerName = localMatch.team1;
-          else if (score.winner === 'AWAY_TEAM') winnerName = localMatch.team2;
-          else winnerName = 'Draw';
-          db.ref('results/' + localMatch.id).set(winnerName);
-        }
+      if (status === 'FINISHED' && score.winner && !results[localMatch.id]) {
+        let winnerName;
+        if (score.winner === 'HOME_TEAM') winnerName = localMatch.team1;
+        else if (score.winner === 'AWAY_TEAM') winnerName = localMatch.team2;
+        else winnerName = 'Draw';
+        db.ref('results/' + localMatch.id).set(winnerName);
       }
     });
 
@@ -1576,13 +1574,7 @@ function findLocalMatch(homeTeam, awayTeam) {
 }
 
 function getApiScore(match) {
-  for (const [id, data] of Object.entries(liveScores)) {
-    const localMatch = findLocalMatch(data.homeTeam, data.awayTeam);
-    if (localMatch && localMatch.id === match.id) {
-      return data;
-    }
-  }
-  return null;
+  return liveScores[match.id] || null;
 }
 
 // Fetch immediately and then every 60 seconds
