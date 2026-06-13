@@ -800,7 +800,10 @@
     <h2>Predict & Win!</h2>
     <p>Predict match winners with your friends. 2 points for every correct prediction. Top the leaderboard!</p>
     <div class="input-group">
-      <input type="text" id="name-input" placeholder="Choose a unique name" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
+      <input type="text" id="name-input" placeholder="Your name" autocomplete="off">
+    </div>
+    <div class="input-group">
+      <input type="tel" id="phone-input" placeholder="Mobile number (10 digits)" autocomplete="off" maxlength="10" onkeypress="if(event.key==='Enter')joinGame()">
     </div>
     <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:700;"></p>
     <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
@@ -1135,30 +1138,37 @@ function initListeners() {
 // ========== AUTH ==========
 function joinGame() {
   const name = document.getElementById('name-input').value.trim();
+  const phone = document.getElementById('phone-input').value.trim().replace(/\D/g, '');
   const errorEl = document.getElementById('login-error');
   errorEl.style.display = 'none';
 
   if (!name) { document.getElementById('name-input').focus(); return; }
+  if (!phone || phone.length !== 10) {
+    errorEl.textContent = 'Please enter a valid 10-digit mobile number.';
+    errorEl.style.display = 'block';
+    document.getElementById('phone-input').focus();
+    return;
+  }
 
-  const key = sanitizeKey(name);
+  const key = phone;
 
   db.ref('players/' + key).once('value', snap => {
     if (snap.exists()) {
+      // Returning user — update name if changed, log them in
       const stored = snap.val();
-      if (stored.name === name) {
-        currentUser = key;
-        localStorage.setItem('wc2026_user', key);
-        localStorage.setItem('wc2026_displayName', name);
-        showApp();
-      } else {
-        errorEl.textContent = 'This name is already taken. Please choose a different one.';
-        errorEl.style.display = 'block';
+      if (stored.name !== name) {
+        db.ref('players/' + key + '/name').set(name);
       }
-    } else {
       currentUser = key;
       localStorage.setItem('wc2026_user', key);
       localStorage.setItem('wc2026_displayName', name);
-      db.ref('players/' + key).set({ name: name, joined: new Date().toISOString() });
+      showApp();
+    } else {
+      // New user
+      currentUser = key;
+      localStorage.setItem('wc2026_user', key);
+      localStorage.setItem('wc2026_displayName', name);
+      db.ref('players/' + key).set({ name: name, phone: phone, joined: new Date().toISOString() });
       showApp();
     }
   });
@@ -1180,51 +1190,15 @@ function showApp() {
 }
 
 function changeName() {
-  const newName = prompt('Enter your new unique name:');
+  const newName = prompt('Enter your new name:');
   if (!newName || !newName.trim()) return;
   const trimmed = newName.trim();
-  const newKey = sanitizeKey(trimmed);
 
-  if (newKey === currentUser) {
-    db.ref('players/' + currentUser + '/name').set(trimmed);
-    localStorage.setItem('wc2026_displayName', trimmed);
-    document.getElementById('display-name').textContent = trimmed;
-    render();
-    return;
-  }
-
-  db.ref('players/' + newKey).once('value', snap => {
-    if (snap.exists()) {
-      alert('That name is already taken. Please choose a different one.');
-      return;
-    }
-
-    const oldKey = currentUser;
-    db.ref('predictions').once('value', predSnap => {
-      const allPreds = predSnap.val() || {};
-      const updates = {};
-
-      Object.keys(allPreds).forEach(k => {
-        if (k.startsWith(oldKey + '_')) {
-          const matchPart = k.substring(oldKey.length + 1);
-          updates[newKey + '_' + matchPart] = allPreds[k];
-          updates[k] = null;
-        }
-      });
-
-      db.ref('predictions').update(updates).then(() => {
-        db.ref('players/' + newKey).set({ name: trimmed, joined: new Date().toISOString() });
-        db.ref('players/' + oldKey).remove();
-
-        currentUser = newKey;
-        localStorage.setItem('wc2026_user', newKey);
-        localStorage.setItem('wc2026_displayName', trimmed);
-        document.getElementById('display-name').textContent = trimmed;
-        render();
-        alert('Name changed to "' + trimmed + '"!');
-      });
-    });
-  });
+  db.ref('players/' + currentUser + '/name').set(trimmed);
+  localStorage.setItem('wc2026_displayName', trimmed);
+  document.getElementById('display-name').textContent = trimmed;
+  render();
+  alert('Name changed to "' + trimmed + '"!');
 }
 
 function logout() {
@@ -1341,12 +1315,9 @@ function renderLeaderboard() {
   const container = document.getElementById('tab-leaderboard');
   const scores = {};
 
-  const HIDDEN_PLAYERS = ['test'];
-
   Object.keys(players).forEach(key => {
     const name = players[key].name || key;
-    if (!isAdmin && HIDDEN_PLAYERS.includes(name.toLowerCase())) return;
-    scores[name] = { points: 0, correct: 0, total: 0 };
+    scores[key] = { points: 0, correct: 0, total: 0, name: name };
   });
 
   Object.keys(predictions).forEach(key => {
@@ -1364,13 +1335,11 @@ function renderLeaderboard() {
     }
     if (!playerKey) return;
 
-    const playerName = players[playerKey] ? players[playerKey].name : playerKey;
-
-    if (results[matchId] && scores[playerName] !== undefined) {
-      scores[playerName].total++;
+    if (results[matchId] && scores[playerKey] !== undefined) {
+      scores[playerKey].total++;
       if (predictions[key] === results[matchId]) {
-        scores[playerName].points += 2;
-        scores[playerName].correct++;
+        scores[playerKey].points += 2;
+        scores[playerKey].correct++;
       }
     }
   });
@@ -1383,14 +1352,13 @@ function renderLeaderboard() {
   if (sorted.length === 0) {
     html += '<div class="empty"><div class="empty-icon">📊</div><p style="font-size:15px;font-weight:600;">No players yet.</p></div>';
   } else {
-    sorted.forEach(([name, stats], i) => {
+    sorted.forEach(([playerKey, stats], i) => {
       const cls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
-      const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
-      const you = name === displayName ? '<span class="lb-you">(You)</span>' : '';
+      const you = playerKey === currentUser ? '<span class="lb-you">(You)</span>' : '';
       html += `
         <div class="lb-item ${cls}">
           <div class="rank">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
-          <div class="lb-name">${name}${you}</div>
+          <div class="lb-name">${stats.name}${you}</div>
           <div class="lb-stats">
             <div class="lb-pts">${stats.points} pts</div>
             <div class="lb-record">${stats.correct}/${stats.total} correct</div>

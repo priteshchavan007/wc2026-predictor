@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Seed Data</title>
+  <title>Migrate to Phone Keys</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h2>Seeding Firebase...</h2>
+  <h2>Migrating Firebase data to phone-based keys...</h2>
   <pre id="log"></pre>
   <script>
     const firebaseConfig = {
@@ -22,100 +22,85 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const log = document.getElementById('log');
-
     function l(msg) { log.textContent += msg + '\n'; }
 
-    async function seed() {
-      // Players
-      const players = [
-        'Pritesh', 'Tanmay Jyot', 'Hemant', 'Vidhi', 'Sandeep',
-        'Majji', 'Anurag', 'Priyanka', 'HS', 'Shweta', '89688'
-      ];
+    const PLAYER_MAP = {
+      'Pritesh': '8097296438',
+      'Tanmay Jyot': '9742596242',
+      'Hemant': '7507057136',
+      'Vidhi': '9100787232',
+      'Shweta': '9916753799',
+      'Majji': '9989601611',
+      'Sandeep': '9703364440',
+      'Anurag': '9553760842',
+      'Priyanka': '9591771293',
+      'HS': '8095707763',
+      'Germanjit': '8968834670',
+    };
 
-      l('Adding players...');
-      for (const name of players) {
-        const key = name.replace(/[.#$\/\[\]]/g, '_');
-        await db.ref('players/' + key).set({ name: name, joined: '2026-06-12T00:00:00.000Z' });
-        l('  + ' + name);
+    const OLD_KEY_MAP = {
+      'Pritesh': 'Pritesh',
+      'Tanmay Jyot': 'Tanmay Jyot',
+      'Hemant': 'Hemant',
+      'Vidhi': 'Vidhi',
+      'Shweta': 'Shweta',
+      'Majji': 'Majji',
+      'Sandeep': 'Sandeep',
+      'Anurag': 'Anurag',
+      'Priyanka': 'Priyanka',
+      'HS': 'HS',
+      'Germanjit': '89688',
+    };
+
+    async function migrate() {
+      l('Step 1: Clearing old players and creating phone-based players...\n');
+
+      await db.ref('players').remove();
+      l('  Cleared old players.');
+
+      for (const [name, phone] of Object.entries(PLAYER_MAP)) {
+        await db.ref('players/' + phone).set({
+          name: name,
+          phone: phone,
+          joined: '2026-06-12T00:00:00.000Z'
+        });
+        l(`  + ${name} → ${phone}`);
       }
 
-      // Match 1: Canada vs Bosnia & Herzegovina (md1_03)
-      // Result: Draw (1-1)
-      // Canada picks: Pritesh, Tanmay Jyot, Hemant, Vidhi, Sandeep (+ 5 more unseen from "See all")
-      // Bosnia picks: Majji, Anurag, Priyanka
-      // Draw picks: 89688
+      l('\nStep 2: Migrating predictions to phone-based keys...\n');
 
-      l('\nAdding predictions for Canada vs Bosnia (md1_03)...');
-      const canadaPicks = ['Pritesh', 'Tanmay Jyot', 'Hemant', 'Vidhi', 'Sandeep'];
-      const bosniaPicks = ['Majji', 'Anurag', 'Priyanka'];
-      const drawPicks1 = ['89688'];
+      const predSnap = await db.ref('predictions').once('value');
+      const oldPreds = predSnap.val() || {};
+      const updates = {};
 
-      for (const p of canadaPicks) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
-        await db.ref('predictions/' + key).set('Canada');
-        l('  ' + p + ' -> Canada');
-      }
-      for (const p of bosniaPicks) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
-        await db.ref('predictions/' + key).set('Bosnia & Herzegovina');
-        l('  ' + p + ' -> Bosnia & Herzegovina');
-      }
-      for (const p of drawPicks1) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
-        await db.ref('predictions/' + key).set('Draw');
-        l('  ' + p + ' -> Draw');
+      for (const key of Object.keys(oldPreds)) {
+        updates[key] = null;
       }
 
-      // Match 2: USA vs Paraguay (md1_04)
-      // Result: USA won (4-1)
-      // Paraguay picks: HS, Anurag, Shweta, Priyanka, 89688 (+ 4 more unseen)
-      // USA picks: Pritesh, Tanmay Jyot, Vidhi
-      // Draw picks: Majji, Hemant
-
-      l('\nAdding predictions for USA vs Paraguay (md1_04)...');
-      const paraguayPicks = ['HS', 'Anurag', 'Shweta', 'Priyanka', '89688'];
-      const usaPicks = ['Pritesh', 'Tanmay Jyot', 'Vidhi'];
-      const drawPicks2 = ['Majji', 'Hemant'];
-
-      for (const p of paraguayPicks) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
-        await db.ref('predictions/' + key).set('Paraguay');
-        l('  ' + p + ' -> Paraguay');
-      }
-      for (const p of usaPicks) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
-        await db.ref('predictions/' + key).set('United States');
-        l('  ' + p + ' -> United States');
-      }
-      for (const p of drawPicks2) {
-        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
-        await db.ref('predictions/' + key).set('Draw');
-        l('  ' + p + ' -> Draw');
+      for (const [name, oldKey] of Object.entries(OLD_KEY_MAP)) {
+        const phone = PLAYER_MAP[name];
+        for (const key of Object.keys(oldPreds)) {
+          if (key.startsWith(oldKey + '_')) {
+            const matchPart = key.substring(oldKey.length + 1);
+            updates[phone + '_' + matchPart] = oldPreds[key];
+            l(`  ${name}: ${key} → ${phone}_${matchPart} = ${oldPreds[key]}`);
+          }
+        }
       }
 
-      // Set results
-      l('\nSetting match results...');
-      await db.ref('results/md1_03').set('Draw');
-      l('  Canada vs Bosnia -> Draw');
-      await db.ref('results/md1_04').set('United States');
-      l('  USA vs Paraguay -> United States');
+      await db.ref('predictions').update(updates);
 
-      l('\n✅ Done! All data seeded.');
-      l('\nLeaderboard after these 2 matches:');
-      l('  Pritesh: 2 pts (1/2 correct - got USA right)');
-      l('  Tanmay Jyot: 2 pts (1/2 correct - got USA right)');
-      l('  Vidhi: 2 pts (1/2 correct - got USA right)');
-      l('  89688: 2 pts (1/2 correct - got Draw right)');
-      l('  Hemant: 0 pts');
-      l('  Sandeep: 0 pts');
-      l('  Majji: 0 pts');
-      l('  Anurag: 0 pts');
-      l('  Priyanka: 0 pts');
-      l('  HS: 0 pts');
-      l('  Shweta: 0 pts');
+      l('\nStep 3: Verifying results...\n');
+      const resSnap = await db.ref('results').once('value');
+      const res = resSnap.val() || {};
+      Object.entries(res).forEach(([k, v]) => l(`  ${k} = ${v}`));
+
+      l('\n✅ Migration complete!');
+      l('\nAll players now keyed by phone number.');
+      l('Users log in with name + 10-digit mobile number.');
     }
 
-    seed().catch(e => l('ERROR: ' + e.message));
+    migrate().catch(e => l('ERROR: ' + e.message));
   </script>
 </body>
 </html>
