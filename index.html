@@ -1232,7 +1232,7 @@ function renderPredict() {
 
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
-  const upcoming = MATCHES.filter(m => !results[m.id] && (getKickoffTime(m) - now) <= twentyFourHours);
+  const upcoming = MATCHES.filter(m => !results[m.id] && !isMatchLocked(m) && (getKickoffTime(m) - now) <= twentyFourHours);
   const grouped = {};
   upcoming.forEach(m => {
     if (!grouped[m.date]) grouped[m.date] = [];
