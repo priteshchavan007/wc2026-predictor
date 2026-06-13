@@ -1416,6 +1416,7 @@ function createGroup() {
     updates['users/' + currentUser + '/groups/' + groupId] = true;
 
     db.ref().update(updates).then(() => {
+      trackEvent('groupsCreated');
       selectGroup(groupId);
     });
   });
@@ -1454,7 +1455,7 @@ function selectGroup(groupId) {
   document.getElementById('group-view').style.display = 'none';
   showApp();
   initListeners();
-  // Track last activity for 30-day cleanup
+  trackDAU();
   db.ref('groups/' + groupId + '/info/lastActivity').set(new Date().toISOString());
 }
 
@@ -1565,6 +1566,7 @@ function joinGame() {
       if (snap.val().name !== name) db.ref('users/' + phone + '/name').set(name);
     } else {
       db.ref('users/' + phone).set({ name: name, phone: phone, joined: new Date().toISOString(), groups: {} });
+      trackEvent('newSignups');
     }
 
     // Check URL for group code
@@ -2080,6 +2082,7 @@ function predict(matchId, pick) {
   }
   const key = currentUser + '_' + matchId;
   db.ref('groups/' + currentGroup + '/predictions/' + key).set(pick);
+  trackEvent('predictions');
 }
 
 function setResult(matchId, winner) {
@@ -2203,6 +2206,19 @@ function findLocalMatch(homeTeam, awayTeam) {
 
 function getApiScore(match) {
   return liveScores[match.id] || null;
+}
+
+// ========== ANALYTICS ==========
+function trackEvent(event) {
+  const today = new Date().toISOString().split('T')[0];
+  const ref = db.ref('analytics/' + today + '/' + event);
+  ref.transaction(val => (val || 0) + 1);
+}
+
+function trackDAU() {
+  if (!currentUser) return;
+  const today = new Date().toISOString().split('T')[0];
+  db.ref('analytics/' + today + '/activeUsers/' + currentUser).set(true);
 }
 
 // ========== INIT ==========

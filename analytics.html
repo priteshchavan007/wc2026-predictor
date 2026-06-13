@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WC 2026 Predictor — Analytics</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #0a0a0f; color: #fff; padding: 24px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 24px; }
+    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+    .card .value { font-size: 36px; font-weight: 900; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .day-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+    .day-row:last-child { border: none; }
+    .label { color: #888; }
+  </style>
+</head>
+<body>
+  <h1>📊 Analytics Dashboard</h1>
+  <div class="grid" id="totals"></div>
+  <h2 style="font-size:16px;margin:24px 0 12px;">Daily Breakdown</h2>
+  <div class="card" id="daily"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDDuFB5d2R9gws79kX117mGHJvxZRIbwNk",
+      authDomain: "wc2026-predictor-56ab2.firebaseapp.com",
+      databaseURL: "https://wc2026-predictor-56ab2-default-rtdb.firebaseio.com",
+      projectId: "wc2026-predictor-56ab2",
+      storageBucket: "wc2026-predictor-56ab2.firebasestorage.app",
+      messagingSenderId: "229291547598",
+      appId: "1:229291547598:web:316de3c90a0bf8e9c5699f"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    async function loadAnalytics() {
+      // Get total users
+      const usersSnap = await db.ref('users').once('value');
+      const totalUsers = Object.keys(usersSnap.val() || {}).length;
+
+      // Get total groups
+      const groupsSnap = await db.ref('groups').once('value');
+      const totalGroups = Object.keys(groupsSnap.val() || {}).length;
+
+      // Get analytics data
+      const analyticsSnap = await db.ref('analytics').once('value');
+      const analytics = analyticsSnap.val() || {};
+
+      // Calculate totals
+      let totalPredictions = 0;
+      let totalSignups = 0;
+      let totalGroupsCreated = 0;
+      let totalDAU = 0;
+
+      const days = Object.keys(analytics).sort().reverse();
+
+      days.forEach(day => {
+        const d = analytics[day];
+        totalPredictions += d.predictions || 0;
+        totalSignups += d.newSignups || 0;
+        totalGroupsCreated += d.groupsCreated || 0;
+      });
+
+      // Today's DAU
+      const today = new Date().toISOString().split('T')[0];
+      const todayData = analytics[today] || {};
+      const todayDAU = Object.keys(todayData.activeUsers || {}).length;
+
+      document.getElementById('totals').innerHTML = `
+        <div class="card"><h3>Total Users</h3><div class="value">${totalUsers}</div></div>
+        <div class="card"><h3>Total Groups</h3><div class="value">${totalGroups}</div></div>
+        <div class="card"><h3>Today's Active</h3><div class="value">${todayDAU}</div></div>
+        <div class="card"><h3>Total Predictions</h3><div class="value">${totalPredictions}</div></div>
+      `;
+
+      // Daily breakdown
+      let dailyHtml = '';
+      days.slice(0, 14).forEach(day => {
+        const d = analytics[day];
+        const dau = Object.keys(d.activeUsers || {}).length;
+        dailyHtml += `
+          <div class="day-row">
+            <span>${day}</span>
+            <span><span class="label">DAU:</span> ${dau}</span>
+            <span><span class="label">Preds:</span> ${d.predictions || 0}</span>
+            <span><span class="label">New:</span> ${d.newSignups || 0}</span>
+          </div>`;
+      });
+
+      document.getElementById('daily').innerHTML = dailyHtml || '<p style="color:#888;">No data yet.</p>';
+    }
+
+    loadAnalytics();
+  </script>
+</body>
+</html>
