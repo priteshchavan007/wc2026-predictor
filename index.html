@@ -1399,7 +1399,7 @@ function renderLeaderboard() {
   const currentRanks = {};
   let calcRank = 1;
   sorted.forEach(([key, s], i) => {
-    if (i > 0 && s.points < sorted[i - 1][1].points) calcRank = i + 1;
+    if (i > 0 && s.points < sorted[i - 1][1].points) calcRank++;
     currentRanks[key] = calcRank;
   });
 
@@ -1434,11 +1434,11 @@ function renderLeaderboard() {
   if (sorted.length === 0) {
     html += '<div class="empty"><div class="empty-icon">📊</div><p style="font-size:15px;font-weight:600;">No players yet.</p></div>';
   } else {
-    // Calculate actual ranks (same points = same rank)
+    // Calculate actual ranks (same points = same rank, next rank increments by 1)
     let actualRank = 1;
     sorted.forEach(([playerKey, stats], i) => {
       if (i > 0 && stats.points < sorted[i - 1][1].points) {
-        actualRank = i + 1;
+        actualRank++;
       }
 
       const you = playerKey === currentUser ? '<span class="lb-you">(You)</span>' : '';
