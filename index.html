@@ -1408,7 +1408,7 @@ function renderResults() {
             ${scoreDisplay
               ? `<div style="font-size:20px;font-weight:900;color:var(--text);">${scoreDisplay}</div>
                  <div style="font-size:9px;font-weight:700;color:${isLive ? 'var(--coral)' : 'var(--text-secondary)'};text-transform:uppercase;margin-top:2px;">${isLive ? '● LIVE' : 'FT'}</div>`
-              : `<div class="vs" style="font-size:11px;font-weight:900;color:var(--text-secondary);">VS</div>`
+              : `<div class="vs">VS</div>`
             }
           </div>
           <div class="team">
@@ -1505,9 +1505,7 @@ let liveScores = {};
 
 async function fetchLiveScores() {
   try {
-    const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
-      headers: { 'X-Auth-Token': API_TOKEN }
-    });
+    const res = await fetch('/.netlify/functions/scores');
     const data = await res.json();
     const matches = data.matches || [];
 
