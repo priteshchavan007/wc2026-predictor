@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Seed Data</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h2>Seeding Firebase...</h2>
+  <pre id="log"></pre>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDDuFB5d2R9gws79kX117mGHJvxZRIbwNk",
+      authDomain: "wc2026-predictor-56ab2.firebaseapp.com",
+      databaseURL: "https://wc2026-predictor-56ab2-default-rtdb.firebaseio.com",
+      projectId: "wc2026-predictor-56ab2",
+      storageBucket: "wc2026-predictor-56ab2.firebasestorage.app",
+      messagingSenderId: "229291547598",
+      appId: "1:229291547598:web:316de3c90a0bf8e9c5699f"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const log = document.getElementById('log');
+
+    function l(msg) { log.textContent += msg + '\n'; }
+
+    async function seed() {
+      // Players
+      const players = [
+        'Pritesh', 'Tanmay Jyot', 'Hemant', 'Vidhi', 'Sandeep',
+        'Majji', 'Anurag', 'Priyanka', 'HS', 'Shweta', '89688'
+      ];
+
+      l('Adding players...');
+      for (const name of players) {
+        const key = name.replace(/[.#$\/\[\]]/g, '_');
+        await db.ref('players/' + key).set({ name: name, joined: '2026-06-12T00:00:00.000Z' });
+        l('  + ' + name);
+      }
+
+      // Match 1: Canada vs Bosnia & Herzegovina (md1_03)
+      // Result: Draw (1-1)
+      // Canada picks: Pritesh, Tanmay Jyot, Hemant, Vidhi, Sandeep (+ 5 more unseen from "See all")
+      // Bosnia picks: Majji, Anurag, Priyanka
+      // Draw picks: 89688
+
+      l('\nAdding predictions for Canada vs Bosnia (md1_03)...');
+      const canadaPicks = ['Pritesh', 'Tanmay Jyot', 'Hemant', 'Vidhi', 'Sandeep'];
+      const bosniaPicks = ['Majji', 'Anurag', 'Priyanka'];
+      const drawPicks1 = ['89688'];
+
+      for (const p of canadaPicks) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
+        await db.ref('predictions/' + key).set('Canada');
+        l('  ' + p + ' -> Canada');
+      }
+      for (const p of bosniaPicks) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
+        await db.ref('predictions/' + key).set('Bosnia & Herzegovina');
+        l('  ' + p + ' -> Bosnia & Herzegovina');
+      }
+      for (const p of drawPicks1) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_03';
+        await db.ref('predictions/' + key).set('Draw');
+        l('  ' + p + ' -> Draw');
+      }
+
+      // Match 2: USA vs Paraguay (md1_04)
+      // Result: USA won (4-1)
+      // Paraguay picks: HS, Anurag, Shweta, Priyanka, 89688 (+ 4 more unseen)
+      // USA picks: Pritesh, Tanmay Jyot, Vidhi
+      // Draw picks: Majji, Hemant
+
+      l('\nAdding predictions for USA vs Paraguay (md1_04)...');
+      const paraguayPicks = ['HS', 'Anurag', 'Shweta', 'Priyanka', '89688'];
+      const usaPicks = ['Pritesh', 'Tanmay Jyot', 'Vidhi'];
+      const drawPicks2 = ['Majji', 'Hemant'];
+
+      for (const p of paraguayPicks) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
+        await db.ref('predictions/' + key).set('Paraguay');
+        l('  ' + p + ' -> Paraguay');
+      }
+      for (const p of usaPicks) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
+        await db.ref('predictions/' + key).set('United States');
+        l('  ' + p + ' -> United States');
+      }
+      for (const p of drawPicks2) {
+        const key = p.replace(/[.#$\/\[\]]/g, '_') + '_md1_04';
+        await db.ref('predictions/' + key).set('Draw');
+        l('  ' + p + ' -> Draw');
+      }
+
+      // Set results
+      l('\nSetting match results...');
+      await db.ref('results/md1_03').set('Draw');
+      l('  Canada vs Bosnia -> Draw');
+      await db.ref('results/md1_04').set('United States');
+      l('  USA vs Paraguay -> United States');
+
+      l('\n✅ Done! All data seeded.');
+      l('\nLeaderboard after these 2 matches:');
+      l('  Pritesh: 2 pts (1/2 correct - got USA right)');
+      l('  Tanmay Jyot: 2 pts (1/2 correct - got USA right)');
+      l('  Vidhi: 2 pts (1/2 correct - got USA right)');
+      l('  89688: 2 pts (1/2 correct - got Draw right)');
+      l('  Hemant: 0 pts');
+      l('  Sandeep: 0 pts');
+      l('  Majji: 0 pts');
+      l('  Anurag: 0 pts');
+      l('  Priyanka: 0 pts');
+      l('  HS: 0 pts');
+      l('  Shweta: 0 pts');
+    }
+
+    seed().catch(e => l('ERROR: ' + e.message));
+  </script>
+</body>
+</html>

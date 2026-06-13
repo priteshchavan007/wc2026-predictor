@@ -545,9 +545,20 @@ function renderLeaderboard() {
   });
 
   Object.keys(predictions).forEach(key => {
-    const lastUnderscore = key.lastIndexOf('_');
-    const playerKey = key.substring(0, lastUnderscore);
-    const matchId = key.substring(lastUnderscore + 1);
+    // Match IDs look like "md1_03", so find the player key by matching against known players
+    let playerKey = '';
+    let matchId = '';
+    for (const pk of Object.keys(players)) {
+      if (key.startsWith(pk + '_')) {
+        const candidate = key.substring(pk.length + 1);
+        if (candidate.startsWith('md')) {
+          playerKey = pk;
+          matchId = candidate;
+          break;
+        }
+      }
+    }
+    if (!playerKey) return;
 
     const playerName = players[playerKey] ? players[playerKey].name : playerKey;
 
