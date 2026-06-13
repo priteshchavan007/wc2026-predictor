@@ -280,17 +280,17 @@
     <p id="header-date"></p>
     <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
   </div>
-  <div class="tabs">
+  <div class="tabs" id="tab-bar">
     <div class="tab active" data-tab="predict" onclick="switchTab('predict')">Predict</div>
     <div class="tab" data-tab="leaderboard" onclick="switchTab('leaderboard')">Leaderboard</div>
     <div class="tab" data-tab="results" onclick="switchTab('results')">Results</div>
-    <div class="tab" data-tab="admin" onclick="switchTab('admin')">Admin</div>
+    <div class="tab" data-tab="admin" onclick="switchTab('admin')" id="admin-tab" style="display:none;">Admin</div>
   </div>
 
   <div class="screen active" id="tab-predict"></div>
   <div class="screen" id="tab-leaderboard"></div>
   <div class="screen" id="tab-results"></div>
-  <div class="screen" id="tab-admin">
+  <div class="screen" id="tab-admin" style="display:none;">
     <div class="section-label">Set Results (Admin Only)</div>
     <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Tap the winner after each match. This updates everyone's scores instantly.</p>
     <div id="admin-list"></div>
@@ -674,6 +674,14 @@ Predict match winners & compete with friends!
   } else {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
+}
+
+// ========== ADMIN ACCESS ==========
+const ADMIN_KEY = 'pritesh2026';
+const isAdmin = new URLSearchParams(window.location.search).get('admin') === ADMIN_KEY;
+
+if (isAdmin) {
+  document.getElementById('admin-tab').style.display = '';
 }
 
 // ========== INIT ==========
