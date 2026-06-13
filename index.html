@@ -113,32 +113,39 @@
       100% { transform: translate(10px, -10px) scale(1.02); }
     }
 
-    /* === HEADER === */
-    .header {
-      background: var(--header-bg);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      padding: 20px 16px 16px;
-      text-align: center;
+    /* === STICKY TOP BAR (Header + Tabs unified) === */
+    .sticky-top {
       position: sticky;
       top: 0;
       z-index: 100;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      position: relative;
+      background: rgba(27, 20, 100, 0.35);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       overflow: hidden;
     }
-    .header::before {
+    .sticky-top::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(135deg, rgba(0,178,169,0.1) 0%, transparent 40%, rgba(228,72,91,0.08) 100%);
+      background: linear-gradient(135deg, rgba(0,178,169,0.06) 0%, transparent 40%, rgba(228,72,91,0.05) 100%);
       pointer-events: none;
     }
-    .header::after {
+    .sticky-top::after {
       content: '';
       position: absolute;
-      top: -2px; left: 0; right: 0; height: 3px;
+      top: 0; left: 0; right: 0; height: 3px;
       background: linear-gradient(90deg, var(--teal), var(--sky), var(--coral), var(--magenta), var(--gold));
+    }
+    [data-theme="light"] .sticky-top {
+      background: rgba(255, 255, 255, 0.45);
+      border-bottom-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .header {
+      padding: 18px 16px 12px;
+      text-align: center;
+      position: relative;
     }
 
     .header h1 {
@@ -146,12 +153,11 @@
       font-weight: 900;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #fff;
+      color: var(--text);
       position: relative; z-index: 1;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
     .header p {
-      font-size: 11px; opacity: 0.7; margin-top: 3px; color: #fff;
+      font-size: 11px; opacity: 0.7; margin-top: 3px; color: var(--text);
       font-weight: 500; position: relative; z-index: 1;
       letter-spacing: 0.5px;
     }
@@ -162,9 +168,9 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       padding: 6px 14px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; color: #fff;
+      font-size: 11px; font-weight: 700; color: var(--text);
       position: absolute; right: 12px; top: 18px; z-index: 2;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid var(--glass-border);
     }
     .user-badge .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; box-shadow: 0 0 6px var(--green); }
 
@@ -187,22 +193,10 @@
     .tabs {
       display: flex;
       justify-content: center;
+      align-items: center;
       gap: 8px;
-      padding: 14px 16px;
-      position: sticky;
-      top: 70px;
-      z-index: 99;
-      background: transparent;
-    }
-    .tabs::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: var(--bg);
-      opacity: 0.8;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      z-index: -1;
+      padding: 10px 16px 14px;
+      position: relative;
     }
 
     .tab {
@@ -813,13 +807,14 @@
 </div>
 
 <div id="app-view" style="display:none;">
-  <div class="header">
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☀️</button>
-    <h1>⚽ WC 2026 Predictor</h1>
-    <p id="header-date"></p>
-    <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
-  </div>
-  <div class="tabs" id="tab-bar">
+  <div class="sticky-top">
+    <div class="header">
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">☀️</button>
+      <h1>⚽ WC 2026 Predictor</h1>
+      <p id="header-date"></p>
+      <div class="user-badge"><span class="dot"></span><span id="display-name"></span></div>
+    </div>
+    <div class="tabs" id="tab-bar">
     <div class="tab active" data-tab="predict" onclick="switchTab('predict')">Predict</div>
     <div class="tab" data-tab="leaderboard" onclick="switchTab('leaderboard')">Leaderboard</div>
     <div class="tab" data-tab="results" onclick="switchTab('results')">Results</div>
@@ -839,6 +834,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 
   <div class="screen active" id="tab-predict"></div>
