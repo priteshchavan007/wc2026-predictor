@@ -259,8 +259,12 @@
     <h2>Predict & Win!</h2>
     <p>Predict match winners with your friends. 2 points for every correct prediction. Top the leaderboard!</p>
     <div class="input-group">
-      <input type="text" id="name-input" placeholder="Your name" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
+      <input type="text" id="name-input" placeholder="Your name" autocomplete="off">
     </div>
+    <div class="input-group">
+      <input type="email" id="email-input" placeholder="your.name@salesforce.com" autocomplete="off" onkeypress="if(event.key==='Enter')joinGame()">
+    </div>
+    <p id="login-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;"></p>
     <button class="btn btn-primary" onclick="joinGame()">Join Game</button>
     <p class="player-count" id="player-count"></p>
     <div class="rules">
@@ -424,11 +428,36 @@ function initListeners() {
 // ========== AUTH ==========
 function joinGame() {
   const name = document.getElementById('name-input').value.trim();
+  const email = document.getElementById('email-input').value.trim().toLowerCase();
+  const errorEl = document.getElementById('login-error');
+  errorEl.style.display = 'none';
+
   if (!name) { document.getElementById('name-input').focus(); return; }
-  currentUser = name;
-  localStorage.setItem('wc2026_user', name);
-  db.ref('players/' + sanitizeKey(name)).set({ name: name, joined: new Date().toISOString() });
-  showApp();
+  if (!email) { document.getElementById('email-input').focus(); return; }
+
+  if (!email.endsWith('@salesforce.com')) {
+    errorEl.textContent = 'Please use your @salesforce.com email address.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // Use email prefix as unique key
+  const emailKey = sanitizeKey(email.replace('@salesforce.com', ''));
+
+  // Check if email is already registered with a different name
+  db.ref('players/' + emailKey).once('value', snap => {
+    if (snap.exists() && snap.val().name !== name) {
+      errorEl.textContent = 'This email is already registered as "' + snap.val().name + '".';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    currentUser = emailKey;
+    localStorage.setItem('wc2026_user', emailKey);
+    localStorage.setItem('wc2026_displayName', name);
+    db.ref('players/' + emailKey).set({ name: name, email: email, joined: new Date().toISOString() });
+    showApp();
+  });
 }
 
 function sanitizeKey(str) {
@@ -438,13 +467,15 @@ function sanitizeKey(str) {
 function showApp() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('app-view').style.display = 'block';
-  document.getElementById('display-name').textContent = currentUser;
+  const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
+  document.getElementById('display-name').textContent = displayName;
   document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
   render();
 }
 
 function logout() {
   localStorage.removeItem('wc2026_user');
+  localStorage.removeItem('wc2026_displayName');
   currentUser = null;
   document.getElementById('login-view').style.display = 'block';
   document.getElementById('app-view').style.display = 'none';
@@ -705,11 +736,13 @@ if (isAdmin) {
 initListeners();
 
 if (currentUser) {
-  db.ref('players/' + sanitizeKey(currentUser)).once('value', snap => {
+  db.ref('players/' + currentUser).once('value', snap => {
     if (snap.exists()) {
+      localStorage.setItem('wc2026_displayName', snap.val().name);
       showApp();
     } else {
       localStorage.removeItem('wc2026_user');
+      localStorage.removeItem('wc2026_displayName');
       currentUser = null;
     }
   });
