@@ -130,6 +130,7 @@
       border-radius: 16px; padding: 18px; margin-bottom: 12px; transition: all 0.2s;
     }
     .match-card.predicted { border-color: rgba(52, 211, 153, 0.4); }
+    .match-card.locked { opacity: 0.6; }
 
     .match-meta { text-align: center; margin-bottom: 4px; }
     .match-meta .time { font-size: 11px; color: var(--text-dim); }
@@ -314,6 +315,29 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ========== REAL FIFA WORLD CUP 2026 FIXTURES ==========
+// Parse IST time string to get kickoff timestamp for locking predictions
+function getKickoffTime(match) {
+  // Parse "Jun 14, 12:30 AM IST" or "Jun 14, 10:30 PM IST" from time field
+  const timeStr = match.time;
+  const parts = timeStr.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)\s+(AM|PM)\s+IST/);
+  if (!parts) return 0;
+  const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+  const month = months[parts[1]];
+  const day = parseInt(parts[2]);
+  let hours = parseInt(parts[3]);
+  const mins = parseInt(parts[4]);
+  const ampm = parts[5];
+  if (ampm === 'AM' && hours === 12) hours = 0;
+  if (ampm === 'PM' && hours !== 12) hours += 12;
+  // Create date in IST (UTC+5:30)
+  const d = new Date(Date.UTC(2026, month, day, hours - 5, mins - 30));
+  return d.getTime();
+}
+
+function isMatchLocked(match) {
+  return Date.now() >= getKickoffTime(match);
+}
+
 const MATCHES = [
   // Matchday 1
   { id: 'md1_01', team1: 'Mexico', team2: 'South Africa', flag1: '🇲🇽', flag2: '🇿🇦', group: 'Group A', date: '2026-06-12', time: 'Jun 12, 12:30 AM IST', venue: 'Estadio Azteca' },
@@ -569,15 +593,16 @@ function renderPredict() {
       html += `<div class="date-divider">${label}</div>`;
 
       grouped[date].forEach(match => {
-        const key = sanitizeKey(currentUser) + '_' + match.id;
+        const key = currentUser + '_' + match.id;
         const userPick = predictions[key];
         const isPredicted = !!userPick;
+        const locked = isMatchLocked(match);
 
         html += `
-          <div class="match-card ${isPredicted ? 'predicted' : ''}">
+          <div class="match-card ${isPredicted ? 'predicted' : ''} ${locked && !isPredicted ? 'locked' : ''}">
             <div class="match-meta">
               <span class="group-tag">${match.group}</span>
-              <div class="time">${match.time}</div>
+              <div class="time">${match.time}${locked ? ' 🔒' : ''}</div>
               ${match.venue ? `<div class="venue">${match.venue}</div>` : ''}
             </div>
             <div class="match-teams">
@@ -592,12 +617,14 @@ function renderPredict() {
               </div>
             </div>
             ${isPredicted
-              ? `<div class="prediction-status">✓ Predicted: ${userPick}</div>`
-              : `<div class="predict-btns">
-                  <button class="predict-btn" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
-                  <button class="predict-btn" onclick="predict('${match.id}','Draw')">Draw</button>
-                  <button class="predict-btn" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
-                </div>`
+              ? `<div class="prediction-status">✓ Predicted: ${userPick}${locked ? ' (locked)' : ''}</div>`
+              : locked
+                ? `<div class="prediction-status" style="color:var(--text-dim);">🔒 Prediction locked — match started</div>`
+                : `<div class="predict-btns">
+                    <button class="predict-btn" onclick="predict('${match.id}','${match.team1}')">${match.team1}</button>
+                    <button class="predict-btn" onclick="predict('${match.id}','Draw')">Draw</button>
+                    <button class="predict-btn" onclick="predict('${match.id}','${match.team2}')">${match.team2}</button>
+                  </div>`
             }
           </div>`;
       });
@@ -692,7 +719,7 @@ function renderResults() {
   let html = '<div class="section-label">Completed Matches</div>';
   [...completed].reverse().forEach(match => {
     const winner = results[match.id];
-    const userKey = sanitizeKey(currentUser) + '_' + match.id;
+    const userKey = currentUser + '_' + match.id;
     const userPick = predictions[userKey];
     const isCorrect = userPick === winner;
 
@@ -745,7 +772,12 @@ function renderAdmin() {
 
 // ========== ACTIONS ==========
 function predict(matchId, pick) {
-  const key = sanitizeKey(currentUser) + '_' + matchId;
+  const match = MATCHES.find(m => m.id === matchId);
+  if (match && isMatchLocked(match)) {
+    alert('This match has already started. Predictions are locked.');
+    return;
+  }
+  const key = currentUser + '_' + matchId;
   db.ref('predictions/' + key).set(pick);
 }
 
