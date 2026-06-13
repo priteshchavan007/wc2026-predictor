@@ -985,7 +985,7 @@ function requestNotifPermission() {
 
 function scheduleUpcomingNotifications() {
   if (!notificationsEnabled) return;
-  MATCHES.forEach(match => {
+  getAllMatches().forEach(match => {
     if (results[match.id]) return;
     const kickoff = getKickoffTime(match);
     const fiveMinBefore = kickoff - (5 * 60 * 1000);
@@ -1022,8 +1022,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ========== REAL FIFA WORLD CUP 2026 FIXTURES ==========
+// ========== MATCH UTILITIES ==========
 function getKickoffTime(match) {
+  if (match.kickoffUTC) return new Date(match.kickoffUTC).getTime();
   const timeStr = match.time;
   const parts = timeStr.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)\s+(AM|PM)\s+IST/);
   if (!parts) return 0;
@@ -1041,6 +1042,81 @@ function getKickoffTime(match) {
 
 function isMatchLocked(match) {
   return Date.now() >= getKickoffTime(match);
+}
+
+// Country flag emoji map
+const FLAG_MAP = {
+  'mexico': '🇲🇽', 'south africa': '🇿🇦', 'korea republic': '🇰🇷', 'south korea': '🇰🇷',
+  'czechia': '🇨🇿', 'czech republic': '🇨🇿', 'canada': '🇨🇦', 'bosnia-h.': '🇧🇦',
+  'bosnia and herzegovina': '🇧🇦', 'bosnia & herzegovina': '🇧🇦',
+  'usa': '🇺🇸', 'united states': '🇺🇸', 'paraguay': '🇵🇾', 'qatar': '🇶🇦',
+  'switzerland': '🇨🇭', 'brazil': '🇧🇷', 'morocco': '🇲🇦', 'haiti': '🇭🇹',
+  'scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'australia': '🇦🇺', 'turkey': '🇹🇷', 'türkiye': '🇹🇷',
+  'germany': '🇩🇪', 'curacao': '🇨🇼', 'curaçao': '🇨🇼', 'netherlands': '🇳🇱',
+  'japan': '🇯🇵', 'ivory coast': '🇨🇮', "côte d'ivoire": '🇨🇮', 'ecuador': '🇪🇨',
+  'sweden': '🇸🇪', 'tunisia': '🇹🇳', 'spain': '🇪🇸', 'cape verde': '🇨🇻',
+  'belgium': '🇧🇪', 'egypt': '🇪🇬', 'saudi arabia': '🇸🇦', 'uruguay': '🇺🇾',
+  'iran': '🇮🇷', 'ir iran': '🇮🇷', 'new zealand': '🇳🇿', 'france': '🇫🇷',
+  'senegal': '🇸🇳', 'iraq': '🇮🇶', 'norway': '🇳🇴', 'argentina': '🇦🇷',
+  'algeria': '🇩🇿', 'austria': '🇦🇹', 'jordan': '🇯🇴', 'portugal': '🇵🇹',
+  'dr congo': '🇨🇩', 'congo dr': '🇨🇩', 'england': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'croatia': '🇭🇷',
+  'ghana': '🇬🇭', 'panama': '🇵🇦', 'uzbekistan': '🇺🇿', 'colombia': '🇨🇴',
+  'nigeria': '🇳🇬', 'denmark': '🇩🇰', 'india': '🇮🇳',
+};
+
+const STAGE_LABELS = {
+  'GROUP_STAGE': 'Group Stage',
+  'LAST_32': 'Round of 32',
+  'LAST_16': 'Round of 16',
+  'QUARTER_FINALS': 'Quarter Final',
+  'SEMI_FINALS': 'Semi Final',
+  'THIRD_PLACE': '3rd Place',
+  'FINAL': 'Final',
+};
+
+function getFlag(teamName) {
+  if (!teamName) return '🏳️';
+  return FLAG_MAP[teamName.toLowerCase()] || FLAG_MAP[normalizeTeamName(teamName)] || '🏳️';
+}
+
+function apiMatchToLocal(m) {
+  const homeName = m.homeTeam.shortName || m.homeTeam.name;
+  const awayName = m.awayTeam.shortName || m.awayTeam.name;
+  if (!homeName || homeName === 'None' || !awayName || awayName === 'None') return null;
+
+  const utc = new Date(m.utcDate);
+  const ist = new Date(utc.getTime() + 5.5 * 60 * 60 * 1000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let h = ist.getHours();
+  const mins = ist.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  const timeStr = `${months[ist.getMonth()]} ${ist.getDate()}, ${h}:${mins} ${ampm} IST`;
+  const dateStr = `${ist.getFullYear()}-${(ist.getMonth()+1).toString().padStart(2,'0')}-${ist.getDate().toString().padStart(2,'0')}`;
+
+  const normalHome = normalizeTeamName(homeName);
+  const normalAway = normalizeTeamName(awayName);
+  const localTeam1 = normalHome.charAt(0).toUpperCase() + normalHome.slice(1);
+  const localTeam2 = normalAway.charAt(0).toUpperCase() + normalAway.slice(1);
+
+  const stageLabel = STAGE_LABELS[m.stage] || m.stage;
+  const groupLabel = m.group ? m.group.replace('_', ' ').replace('GROUP ', 'Group ') : stageLabel;
+
+  return {
+    id: 'api_' + m.id,
+    team1: homeName,
+    team2: awayName,
+    flag1: getFlag(homeName),
+    flag2: getFlag(awayName),
+    group: groupLabel,
+    date: dateStr,
+    time: timeStr,
+    venue: '',
+    kickoffUTC: m.utcDate,
+    stage: m.stage,
+    apiId: m.id,
+  };
 }
 
 const MATCHES = [
@@ -1128,6 +1204,11 @@ let currentUser = localStorage.getItem('wc2026_user');
 let predictions = {};
 let results = {};
 let players = {};
+let dynamicMatches = [];
+
+function getAllMatches() {
+  return dynamicMatches.length > 0 ? dynamicMatches : MATCHES;
+}
 
 // ========== FIREBASE LISTENERS ==========
 function initListeners() {
@@ -1254,7 +1335,7 @@ function renderPredict() {
 
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
-  const upcoming = MATCHES.filter(m => !results[m.id] && !isMatchLocked(m));
+  const upcoming = getAllMatches().filter(m => !results[m.id] && !isMatchLocked(m));
   const grouped = {};
   upcoming.forEach(m => {
     if (!grouped[m.date]) grouped[m.date] = [];
@@ -1344,7 +1425,7 @@ function calculateScores() {
   });
 
   // Get match IDs sorted by date for streak calculation
-  const decidedMatches = MATCHES.filter(m => results[m.id]).map(m => m.id);
+  const decidedMatches = getAllMatches().filter(m => results[m.id]).map(m => m.id);
 
   Object.keys(predictions).forEach(key => {
     let playerKey = '';
@@ -1404,7 +1485,7 @@ function renderLeaderboard() {
   });
 
   // Find best predictor of last match
-  const decidedMatches = MATCHES.filter(m => results[m.id]);
+  const decidedMatches = getAllMatches().filter(m => results[m.id]);
   let lastMatchWinners = [];
   if (decidedMatches.length > 0) {
     const lastMatch = decidedMatches[decidedMatches.length - 1];
@@ -1484,7 +1565,7 @@ function renderLeaderboard() {
 
 function renderResults() {
   const container = document.getElementById('tab-results');
-  const completed = MATCHES.filter(m => results[m.id] || isMatchLocked(m));
+  const completed = getAllMatches().filter(m => results[m.id] || isMatchLocked(m));
 
   if (completed.length === 0) {
     container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p style="font-size:15px;font-weight:600;">No results yet.<br><span style="font-weight:400;font-size:13px;">Check back after matches are played!</span></p></div>';
@@ -1545,7 +1626,7 @@ function renderAdmin() {
   const container = document.getElementById('admin-list');
   let html = '';
 
-  MATCHES.forEach(match => {
+  getAllMatches().forEach(match => {
     const result = results[match.id];
     html += `
       <div class="admin-card">
@@ -1570,7 +1651,7 @@ function handlePredict(event, matchId, pick) {
 }
 
 function predict(matchId, pick) {
-  const match = MATCHES.find(m => m.id === matchId);
+  const match = getAllMatches().find(m => m.id === matchId);
   if (match && isMatchLocked(match)) {
     alert('This match has already started. Predictions are locked.');
     return;
@@ -1618,16 +1699,27 @@ async function fetchLiveScores() {
   try {
     const res = await fetch('/.netlify/functions/scores');
     const data = await res.json();
-    const matches = data.matches || [];
+    const apiMatches = data.matches || [];
 
-    matches.forEach(m => {
-      const homeTeam = m.homeTeam.shortName;
-      const awayTeam = m.awayTeam.shortName;
+    // Build dynamic matches from API (includes knockout once teams are set)
+    const newDynamic = [];
+    apiMatches.forEach(m => {
+      const converted = apiMatchToLocal(m);
+      if (converted) newDynamic.push(converted);
+    });
+    if (newDynamic.length > 0) dynamicMatches = newDynamic;
+
+    // Update live scores
+    apiMatches.forEach(m => {
+      const homeName = m.homeTeam.shortName;
+      const awayName = m.awayTeam.shortName;
+      if (!homeName || !awayName) return;
+
+      const localMatch = findLocalMatch(homeName, awayName);
+      if (!localMatch) return;
+
       const score = m.score;
       const status = m.status;
-
-      const localMatch = findLocalMatch(homeTeam, awayTeam);
-      if (!localMatch) return;
 
       liveScores[localMatch.id] = {
         status,
@@ -1674,7 +1766,7 @@ function normalizeTeamName(name) {
 function findLocalMatch(homeTeam, awayTeam) {
   const apiH = normalizeTeamName(homeTeam);
   const apiA = normalizeTeamName(awayTeam);
-  return MATCHES.find(m => {
+  return getAllMatches().find(m => {
     const h = m.team1.toLowerCase();
     const a = m.team2.toLowerCase();
     return (h === apiH || h.includes(apiH) || apiH.includes(h)) &&
