@@ -1242,7 +1242,9 @@ function renderPredict() {
   const container = document.getElementById('tab-predict');
   const today = new Date().toISOString().split('T')[0];
 
-  const upcoming = MATCHES.filter(m => !results[m.id]);
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+  const upcoming = MATCHES.filter(m => !results[m.id] && (getKickoffTime(m) - now) <= twentyFourHours);
   const grouped = {};
   upcoming.forEach(m => {
     if (!grouped[m.date]) grouped[m.date] = [];
