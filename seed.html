@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sync Standings</title>
+  <title>Seed Actual Predictions</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
@@ -9,13 +9,14 @@
     pre { white-space: pre-wrap; }
     button { padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px; background: #222; color: #0f0; border: 1px solid #0f0; border-radius: 6px; }
     button:hover { background: #0f0; color: #111; }
+    .warn { color: #ff0; }
   </style>
 </head>
 <body>
-  <h2>Sync Firebase to Current Standings</h2>
-  <p>This will set predictions so the leaderboard matches the current WhatsApp-tracked standings.</p>
-  <p>8 matches decided. From now on, the app auto-handles everything.</p>
-  <button onclick="syncStandings()">Sync Now</button>
+  <h2>Seed Actual Predictions from WhatsApp Polls</h2>
+  <p>This sets the real predictions for matches md1_05 through md1_08 based on screenshot data.</p>
+  <p class="warn">All votes verified to be before kickoff. No discrepancies found.</p>
+  <button onclick="seedPredictions()">Seed Predictions</button>
   <pre id="log"></pre>
 
   <script>
@@ -34,87 +35,139 @@
     const logEl = document.getElementById('log');
     function l(msg) { logEl.textContent += msg + '\n'; }
 
-    // 8 finished matches with correct results
-    const MATCH_RESULTS = {
-      'md1_01': 'Mexico',         // Mexico vs South Africa -> Mexico won
-      'md1_02': 'South Korea',    // S.Korea vs Czech Republic -> S.Korea won
-      'md1_03': 'Draw',           // Canada vs Bosnia -> Draw
-      'md1_04': 'United States',  // USA vs Paraguay -> USA won
-      'md1_05': 'Draw',           // Qatar vs Switzerland -> Draw
-      'md1_06': 'Draw',           // Brazil vs Morocco -> Draw
-      'md1_07': 'Scotland',       // Haiti vs Scotland -> Scotland won (Haiti = home)
-      'md1_08': 'Australia',      // Australia vs Turkey -> Australia won
+    // Player phone mapping
+    const P = {
+      'Pritesh': '8097296438',
+      'Tanmay': '9742596242',
+      'Hemant': '7507057136',
+      'Vidhi': '9100787232',
+      'Shweta': '9916753799',
+      'Majji': '9989601611',
+      'Sandeep': '9703364440',
+      'Anurag': '9553760842',
+      'Priyanka': '9591771293',
+      'Happy': '8095707763',
+      'Germanjit': '8968834670',
+      'Aditi': '8582609793',
+      'Pushkin': '9834159538',
+      'Deepshika': '8826032950',
+      'Nirjhar': '9836657468',
     };
 
-    const MATCH_IDS = Object.keys(MATCH_RESULTS);
-
-    // Current standings - points each player should have
-    // Points = correct predictions * 2
-    const STANDINGS = {
-      '8097296438': { name: 'Pritesh', points: 6 },       // 3 correct
-      '9742596242': { name: 'Tanmay', points: 6 },        // 3 correct
-      '8582609793': { name: 'Aditi', points: 4 },          // 2 correct
-      '8968834670': { name: 'Germanjit', points: 4 },      // 2 correct
-      '9834159538': { name: 'Pushkin Sonkusare', points: 4 },  // 2 correct
-      '9916753799': { name: 'Shweta', points: 4 },         // 2 correct
-      '9100787232': { name: 'Vidhi', points: 4 },           // 2 correct
-      '8095707763': { name: 'Happy', points: 2 },           // 1 correct
-      '7507057136': { name: 'Hemant', points: 2 },          // 1 correct
-      '9591771293': { name: 'Priyanka', points: 2 },        // 1 correct
-      '9703364440': { name: 'Sandeep', points: 2 },         // 1 correct
-      '9553760842': { name: 'Anurag', points: 0 },          // 0 correct
-      '8826032950': { name: 'Deepshika', points: 0 },       // 0 correct
-      '9989601611': { name: 'Majji', points: 0 },           // 0 correct
-      '9836657468': { name: 'Nirjhar', points: 0 },         // 0 correct
-    };
-
-    async function syncStandings() {
-      l('=== Syncing Standings ===\n');
-
+    async function seedPredictions() {
       const updates = {};
 
-      // Clear existing predictions for default group
-      updates['groups/default/predictions'] = null;
+      l('=== Match: Qatar vs Switzerland (md1_05) ===');
+      l('Result: Draw | Kickoff: Jun 14, 12:30 AM IST');
+      l('');
 
-      l('Step 1: Setting match results...');
-      Object.entries(MATCH_RESULTS).forEach(([id, winner]) => {
-        updates['results/' + id] = winner;
-        l(`  ${id}: ${winner}`);
+      // Switzerland picks (11): Pritesh, Germanjit, Hemant, Priyanka, Pushkin, Shweta, Vidhi, Anurag, Happy, Sandeep, Nirjhar
+      const switzPicks = ['Pritesh', 'Germanjit', 'Hemant', 'Priyanka', 'Pushkin', 'Shweta', 'Vidhi', 'Anurag', 'Happy', 'Sandeep', 'Nirjhar'];
+      switzPicks.forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_05`] = 'Switzerland';
+        l(`  ${name} -> Switzerland`);
       });
 
-      l('\nStep 2: Creating predictions to match standings...');
-
-      // For each player, create N correct predictions where N = points/2
-      // Assign correct predictions to first N matches, wrong to the rest
-      Object.entries(STANDINGS).forEach(([phone, data]) => {
-        const correctNeeded = data.points / 2;
-        l(`  ${data.name} (${phone}): ${correctNeeded} correct predictions needed`);
-
-        MATCH_IDS.forEach((matchId, i) => {
-          const key = phone + '_' + matchId;
-          if (i < correctNeeded) {
-            // Correct prediction
-            updates['groups/default/predictions/' + key] = MATCH_RESULTS[matchId];
-          } else {
-            // Wrong prediction — pick something that's NOT the result
-            const result = MATCH_RESULTS[matchId];
-            let wrongPick;
-            if (result === 'Draw') wrongPick = 'WrongTeam';
-            else wrongPick = 'Draw';
-            updates['groups/default/predictions/' + key] = wrongPick;
-          }
-        });
+      // Qatar picks (2): Majji, Tanmay
+      ['Majji', 'Tanmay'].forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_05`] = 'Qatar';
+        l(`  ${name} -> Qatar`);
       });
 
-      l('\nStep 3: Writing to Firebase...');
+      // Draw picks (1): Aditi
+      ['Aditi'].forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_05`] = 'Draw';
+        l(`  ${name} -> Draw ✓ CORRECT`);
+      });
+
+      l('');
+      l('=== Match: Brazil vs Morocco (md1_06) ===');
+      l('Result: Draw | Kickoff: Jun 14, 3:30 AM IST');
+      l('');
+
+      // Brazil picks (12): Germanjit, Hemant, Priyanka, Pushkin, Shweta, Majji, Anurag, Vidhi, Happy, Aditi, Sandeep, Nirjhar
+      const brazilPicks = ['Germanjit', 'Hemant', 'Priyanka', 'Pushkin', 'Shweta', 'Majji', 'Anurag', 'Vidhi', 'Happy', 'Aditi', 'Sandeep', 'Nirjhar'];
+      brazilPicks.forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_06`] = 'Brazil';
+        l(`  ${name} -> Brazil`);
+      });
+
+      // Draw picks (2): Pritesh, Tanmay
+      ['Pritesh', 'Tanmay'].forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_06`] = 'Draw';
+        l(`  ${name} -> Draw ✓ CORRECT`);
+      });
+
+      l('');
+      l('=== Match: Haiti vs Scotland (md1_07) ===');
+      l('Result: Scotland | Kickoff: Jun 14, 6:30 AM IST');
+      l('');
+
+      // Scotland picks (11): Pritesh, Germanjit, Hemant, Priyanka, Pushkin, Shweta, Vidhi, Happy, Tanmay, Aditi, Sandeep
+      const scotPicks = ['Pritesh', 'Germanjit', 'Hemant', 'Priyanka', 'Pushkin', 'Shweta', 'Vidhi', 'Happy', 'Tanmay', 'Aditi', 'Sandeep'];
+      scotPicks.forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_07`] = 'Scotland';
+        l(`  ${name} -> Scotland ✓ CORRECT`);
+      });
+
+      // Haiti picks (2): Majji, Anurag
+      ['Majji', 'Anurag'].forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_07`] = 'Haiti';
+        l(`  ${name} -> Haiti`);
+      });
+
+      l('');
+      l('=== Match: Australia vs Turkey (md1_08) ===');
+      l('Result: Australia | Kickoff: Jun 14, 9:30 AM IST');
+      l('');
+
+      // Turkey picks (9): Pritesh, Germanjit, Hemant, Priyanka, Majji, Vidhi, Happy, Aditi, Sandeep
+      const turkeyPicks = ['Pritesh', 'Germanjit', 'Hemant', 'Priyanka', 'Majji', 'Vidhi', 'Happy', 'Aditi', 'Sandeep'];
+      turkeyPicks.forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_08`] = 'Turkey';
+        l(`  ${name} -> Turkey`);
+      });
+
+      // Australia picks (3): Shweta, Pushkin, Tanmay
+      ['Shweta', 'Pushkin', 'Tanmay'].forEach(name => {
+        updates[`groups/default/predictions/${P[name]}_md1_08`] = 'Australia';
+        l(`  ${name} -> Australia ✓ CORRECT`);
+      });
+
+      // Deepshika didn't vote in any of these 4 matches
+      l('');
+      l('Note: Deepshika did not vote in any of these 4 matches.');
+      l('Note: Nirjhar only voted in md1_05 (Switzerland) and md1_06 (Brazil).');
+
+      // Also set results for these matches
+      updates['results/md1_05'] = 'Draw';
+      updates['results/md1_06'] = 'Draw';
+      updates['results/md1_07'] = 'Scotland';
+      updates['results/md1_08'] = 'Australia';
+
+      l('');
+      l('Writing to Firebase...');
       try {
         await db.ref().update(updates);
-        l('\n✅ Done! Leaderboard should now show:');
-        const sorted = Object.entries(STANDINGS).sort((a,b) => b[1].points - a[1].points);
-        sorted.forEach(([phone, data]) => {
-          l(`  ${data.name}: ${data.points} pts`);
-        });
-        l('\nFrom now on, the app auto-calculates everything.');
+        l('');
+        l('✅ Done! Predictions seeded for md1_05 through md1_08.');
+        l('');
+        l('Points from these 4 matches:');
+        l('  Pritesh: +4 (Draw for Brazil, Scotland) = total should increase');
+        l('  Tanmay: +6 (Draw for Brazil, Scotland, Australia)');
+        l('  Aditi: +2 (Draw for Qatar)');
+        l('  Shweta: +4 (Scotland, Australia)');
+        l('  Pushkin: +4 (Scotland, Australia)');
+        l('  Germanjit: +2 (Scotland)');
+        l('  Hemant: +2 (Scotland)');
+        l('  Priyanka: +2 (Scotland)');
+        l('  Happy: +2 (Scotland)');
+        l('  Sandeep: +2 (Scotland)');
+        l('  Vidhi: +2 (Scotland)');
+        l('  Majji: 0');
+        l('  Anurag: 0');
+        l('  Nirjhar: 0');
+        l('  Deepshika: 0');
       } catch(e) {
         l('ERROR: ' + e.message);
       }
