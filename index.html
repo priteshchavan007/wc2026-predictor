@@ -940,6 +940,10 @@
           <span class="settings-icon">✏️</span>
           <span>Change Name</span>
         </div>
+        <div class="settings-item" onclick="showRules()">
+          <span class="settings-icon">📖</span>
+          <span>Rules</span>
+        </div>
         <div class="settings-item admin-only" onclick="renameGroup()" style="display:none;">
           <span class="settings-icon">📝</span>
           <span>Rename Group</span>
@@ -1985,6 +1989,38 @@ function getCurrentRank(playerKey) {
 
 function closeProfile() {
   document.getElementById('profile-modal').style.display = 'none';
+}
+
+function showRules() {
+  closeSettings();
+  const html = `
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:40px;margin-bottom:8px;">⚽</div>
+      <div style="font-size:22px;font-weight:900;">How to Play</div>
+    </div>
+
+    <div style="font-size:14px;line-height:2.2;">
+      <div>🎯 <strong>Predict</strong> — Pick who wins each match (or Draw)</div>
+      <div>⏰ <strong>Timing</strong> — Predictions open 24 hrs before kickoff</div>
+      <div>🔒 <strong>Lock</strong> — Once the match starts, your pick is locked</div>
+      <div>🔄 <strong>Change</strong> — You can switch your pick anytime before kickoff</div>
+      <div>✅ <strong>Right</strong> — Correct prediction = <strong>+2 points</strong></div>
+      <div>❌ <strong>Wrong</strong> — Wrong prediction = 0 points</div>
+      <div>😴 <strong>Skip</strong> — Didn't predict? No points, no penalty</div>
+      <div>📊 <strong>Leaderboard</strong> — Same points = same rank</div>
+      <div>🔥 <strong>Streaks</strong> — Consecutive correct picks earn a fire badge</div>
+      <div>👑 <strong>Winner</strong> — Top predictor at the end of the World Cup wins!</div>
+    </div>
+
+    <div style="margin-top:20px;padding:14px;background:rgba(0,178,169,0.1);border:1px solid rgba(0,178,169,0.2);border-radius:10px;font-size:12px;text-align:center;color:var(--teal);font-weight:600;">
+      Pro tip: Even underdogs win in the World Cup. Trust your gut! 🐐
+    </div>
+
+    <button onclick="closeProfile()" style="width:100%;margin-top:20px;padding:12px;border:1px solid var(--glass-border);border-radius:10px;background:transparent;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Got it!</button>
+  `;
+
+  document.getElementById('profile-content').innerHTML = html;
+  document.getElementById('profile-modal').style.display = 'flex';
 }
 
 function renderResults() {
