@@ -1763,7 +1763,7 @@ function calculateScores() {
   });
 
   // Get match IDs sorted by date for streak calculation
-  const decidedMatches = getAllMatches().filter(m => results[m.id]).map(m => m.id);
+  const decidedMatches = Object.keys(results);
 
   Object.keys(predictions).forEach(key => {
     let playerKey = '';
@@ -1823,7 +1823,7 @@ function renderLeaderboard() {
   });
 
   // Find best predictor of last match
-  const decidedMatches = getAllMatches().filter(m => results[m.id]);
+  const decidedMatches = Object.keys(results).map(id => MATCHES.find(m => m.id === id) || getAllMatches().find(m => m.id === id)).filter(Boolean);
   let lastMatchWinners = [];
   if (decidedMatches.length > 0) {
     const lastMatch = decidedMatches[decidedMatches.length - 1];
@@ -1906,7 +1906,7 @@ function showProfile(playerKey) {
   const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
 
   // Calculate longest streak
-  const decidedMatches = getAllMatches().filter(m => results[m.id]).map(m => m.id);
+  const decidedMatches = Object.keys(results);
   let longestStreak = 0, tempStreak = 0;
   decidedMatches.forEach(mId => {
     const predKey = playerKey + '_' + mId;
@@ -1947,13 +1947,14 @@ function showProfile(playerKey) {
   // Prediction history
   let historyHtml = '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--card-border);"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">Recent Predictions</div>';
   decidedMatches.slice(-8).reverse().forEach(mId => {
-    const match = getAllMatches().find(m => m.id === mId);
+    const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
     const pred = predictions[playerKey + '_' + mId];
     const correct = pred === results[mId];
-    historyHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px;">
-      <span>${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2}</span>
-      <span style="color:${pred ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--text-secondary)'};font-weight:700;">${pred ? (correct ? '✓' : '✗') : '—'}</span>
+    historyHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:12px;border-bottom:1px solid var(--card-border);">
+      <span>${match.flag1} vs ${match.flag2}</span>
+      <span style="font-weight:600;">${pred || '—'}</span>
+      <span style="color:${pred ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--text-secondary)'};font-weight:700;">${pred ? (correct ? '+2 ✓' : '0 ✗') : '—'}</span>
     </div>`;
   });
   historyHtml += '</div>';
