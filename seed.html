@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Migration: Move data to groups/default</title>
+  <title>Sync Standings</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
@@ -9,29 +9,13 @@
     pre { white-space: pre-wrap; }
     button { padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px; background: #222; color: #0f0; border: 1px solid #0f0; border-radius: 6px; }
     button:hover { background: #0f0; color: #111; }
-    .warning { color: #ff0; }
-    .error { color: #f44; }
-    .success { color: #0f0; }
   </style>
 </head>
 <body>
-  <h2>Firebase Migration: Multi-Group Support</h2>
-  <p class="warning">This script migrates existing data into the new groups/default structure.</p>
-  <p>New structure:</p>
-  <pre>
-  groups/
-    default/
-      info: { name, code, createdBy, createdAt }
-      members: { phone: { role, joinedAt } }
-      players: { phone: { name, phone, joined } }
-      predictions: { phone_matchId: pick }
-  results/ (global - unchanged)
-  users/ (global user profiles)
-  groupCodes/ (code -> groupId lookup)
-  </pre>
-  <button onclick="runMigration()">Run Migration</button>
-  <button onclick="verifyMigration()">Verify Migration</button>
-  <button onclick="rollback()">Rollback (Danger!)</button>
+  <h2>Sync Firebase to Current Standings</h2>
+  <p>This will set predictions so the leaderboard matches the current WhatsApp-tracked standings.</p>
+  <p>8 matches decided. From now on, the app auto-handles everything.</p>
+  <button onclick="syncStandings()">Sync Now</button>
   <pre id="log"></pre>
 
   <script>
@@ -48,214 +32,92 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const logEl = document.getElementById('log');
+    function l(msg) { logEl.textContent += msg + '\n'; }
 
-    function l(msg, cls) {
-      const span = document.createElement('span');
-      span.className = cls || '';
-      span.textContent = msg + '\n';
-      logEl.appendChild(span);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
+    // 8 finished matches with correct results
+    const MATCH_RESULTS = {
+      'md1_01': 'Mexico',         // Mexico vs South Africa -> Mexico won
+      'md1_02': 'South Korea',    // S.Korea vs Czech Republic -> S.Korea won
+      'md1_03': 'Draw',           // Canada vs Bosnia -> Draw
+      'md1_04': 'United States',  // USA vs Paraguay -> USA won
+      'md1_05': 'Draw',           // Qatar vs Switzerland -> Draw
+      'md1_06': 'Draw',           // Brazil vs Morocco -> Draw
+      'md1_07': 'Scotland',       // Haiti vs Scotland -> Scotland won (Haiti = home)
+      'md1_08': 'Australia',      // Australia vs Turkey -> Australia won
+    };
 
-    const DEFAULT_GROUP_ID = 'default';
-    const DEFAULT_GROUP_NAME = "Pritesh's Predictor Squad";
-    const DEFAULT_GROUP_CODE = 'PRED26';
-    const ADMIN_PHONE = '8097296438'; // Pritesh
+    const MATCH_IDS = Object.keys(MATCH_RESULTS);
 
-    async function runMigration() {
-      l('=== Starting Migration ===');
-      l('');
+    // Current standings - points each player should have
+    // Points = correct predictions * 2
+    const STANDINGS = {
+      '8097296438': { name: 'Pritesh', points: 6 },       // 3 correct
+      '9742596242': { name: 'Tanmay', points: 6 },        // 3 correct
+      '8582609793': { name: 'Aditi', points: 4 },          // 2 correct
+      '8968834670': { name: 'Germanjit', points: 4 },      // 2 correct
+      '9834159538': { name: 'Pushkin Sonkusare', points: 4 },  // 2 correct
+      '9916753799': { name: 'Shweta', points: 4 },         // 2 correct
+      '9100787232': { name: 'Vidhi', points: 4 },           // 2 correct
+      '8095707763': { name: 'Happy', points: 2 },           // 1 correct
+      '7507057136': { name: 'Hemant', points: 2 },          // 1 correct
+      '9591771293': { name: 'Priyanka', points: 2 },        // 1 correct
+      '9703364440': { name: 'Sandeep', points: 2 },         // 1 correct
+      '9553760842': { name: 'Anurag', points: 0 },          // 0 correct
+      '8826032950': { name: 'Deepshika', points: 0 },       // 0 correct
+      '9989601611': { name: 'Majji', points: 0 },           // 0 correct
+      '9836657468': { name: 'Nirjhar', points: 0 },         // 0 correct
+    };
 
-      // Step 1: Check if migration already happened
-      const existingGroup = await db.ref('groups/' + DEFAULT_GROUP_ID).once('value');
-      if (existingGroup.exists()) {
-        l('Migration already completed! groups/default already exists.', 'warning');
-        l('Use "Verify Migration" to check data, or "Rollback" to undo.', 'warning');
-        return;
-      }
-
-      // Step 2: Read current data
-      l('Step 1: Reading current data...');
-      const playersSnap = await db.ref('players').once('value');
-      const predictionsSnap = await db.ref('predictions').once('value');
-      const resultsSnap = await db.ref('results').once('value');
-
-      const players = playersSnap.val() || {};
-      const predictions = predictionsSnap.val() || {};
-      const results = resultsSnap.val() || {};
-
-      const playerCount = Object.keys(players).length;
-      const predictionCount = Object.keys(predictions).length;
-      const resultCount = Object.keys(results).length;
-
-      l(`  Found ${playerCount} players`);
-      l(`  Found ${predictionCount} predictions`);
-      l(`  Found ${resultCount} results`);
-      l('');
-
-      // Step 3: Build the new structure
-      l('Step 2: Building new group structure...');
+    async function syncStandings() {
+      l('=== Syncing Standings ===\n');
 
       const updates = {};
 
-      // Group info
-      updates[`groups/${DEFAULT_GROUP_ID}/info`] = {
-        name: DEFAULT_GROUP_NAME,
-        code: DEFAULT_GROUP_CODE,
-        createdBy: ADMIN_PHONE,
-        createdAt: '2026-06-12T00:00:00.000Z'
-      };
+      // Clear existing predictions for default group
+      updates['groups/default/predictions'] = null;
 
-      // Members
-      Object.keys(players).forEach(phone => {
-        updates[`groups/${DEFAULT_GROUP_ID}/members/${phone}`] = {
-          role: phone === ADMIN_PHONE ? 'admin' : 'member',
-          joinedAt: players[phone].joined || '2026-06-12T00:00:00.000Z'
-        };
+      l('Step 1: Setting match results...');
+      Object.entries(MATCH_RESULTS).forEach(([id, winner]) => {
+        updates['results/' + id] = winner;
+        l(`  ${id}: ${winner}`);
       });
 
-      // Players in group
-      Object.entries(players).forEach(([phone, data]) => {
-        updates[`groups/${DEFAULT_GROUP_ID}/players/${phone}`] = data;
+      l('\nStep 2: Creating predictions to match standings...');
+
+      // For each player, create N correct predictions where N = points/2
+      // Assign correct predictions to first N matches, wrong to the rest
+      Object.entries(STANDINGS).forEach(([phone, data]) => {
+        const correctNeeded = data.points / 2;
+        l(`  ${data.name} (${phone}): ${correctNeeded} correct predictions needed`);
+
+        MATCH_IDS.forEach((matchId, i) => {
+          const key = phone + '_' + matchId;
+          if (i < correctNeeded) {
+            // Correct prediction
+            updates['groups/default/predictions/' + key] = MATCH_RESULTS[matchId];
+          } else {
+            // Wrong prediction — pick something that's NOT the result
+            const result = MATCH_RESULTS[matchId];
+            let wrongPick;
+            if (result === 'Draw') wrongPick = 'WrongTeam';
+            else wrongPick = 'Draw';
+            updates['groups/default/predictions/' + key] = wrongPick;
+          }
+        });
       });
 
-      // Predictions in group
-      Object.entries(predictions).forEach(([key, val]) => {
-        updates[`groups/${DEFAULT_GROUP_ID}/predictions/${key}`] = val;
-      });
-
-      // Global users (profile data)
-      Object.entries(players).forEach(([phone, data]) => {
-        updates[`users/${phone}`] = {
-          name: data.name,
-          phone: data.phone,
-          joined: data.joined || '2026-06-12T00:00:00.000Z',
-          groups: { [DEFAULT_GROUP_ID]: true }
-        };
-      });
-
-      // Group code lookup
-      updates[`groupCodes/${DEFAULT_GROUP_CODE}`] = DEFAULT_GROUP_ID;
-
-      // Results stay at root level (global)
-      // They are already there, no need to move
-
-      l(`  Prepared ${Object.keys(updates).length} database writes`);
-      l('');
-
-      // Step 4: Write all updates atomically
-      l('Step 3: Writing new structure to Firebase...');
+      l('\nStep 3: Writing to Firebase...');
       try {
         await db.ref().update(updates);
-        l('  All writes successful!', 'success');
-      } catch (e) {
-        l('  ERROR: ' + e.message, 'error');
-        return;
+        l('\n✅ Done! Leaderboard should now show:');
+        const sorted = Object.entries(STANDINGS).sort((a,b) => b[1].points - a[1].points);
+        sorted.forEach(([phone, data]) => {
+          l(`  ${data.name}: ${data.points} pts`);
+        });
+        l('\nFrom now on, the app auto-calculates everything.');
+      } catch(e) {
+        l('ERROR: ' + e.message);
       }
-      l('');
-
-      // Step 5: Clean up old root-level players and predictions
-      l('Step 4: Cleaning up old root-level data...');
-      try {
-        await db.ref('players').remove();
-        l('  Removed root /players');
-        await db.ref('predictions').remove();
-        l('  Removed root /predictions');
-        await db.ref('rankHistory').remove();
-        l('  Removed root /rankHistory');
-      } catch (e) {
-        l('  Warning: cleanup error (non-critical): ' + e.message, 'warning');
-      }
-      l('');
-
-      l('=== Migration Complete! ===', 'success');
-      l('');
-      l('Summary:', 'success');
-      l(`  Group: "${DEFAULT_GROUP_NAME}" (code: ${DEFAULT_GROUP_CODE})`);
-      l(`  Members: ${playerCount}`);
-      l(`  Predictions migrated: ${predictionCount}`);
-      l(`  Results (global): ${resultCount}`);
-      l('');
-      l('Users can now join with code PRED26 or the shared link.');
-    }
-
-    async function verifyMigration() {
-      l('');
-      l('=== Verifying Migration ===');
-
-      const groupInfo = await db.ref('groups/' + DEFAULT_GROUP_ID + '/info').once('value');
-      if (!groupInfo.exists()) {
-        l('  ERROR: groups/default/info does not exist', 'error');
-        return;
-      }
-      l('  Group info: ' + JSON.stringify(groupInfo.val()), 'success');
-
-      const members = await db.ref('groups/' + DEFAULT_GROUP_ID + '/members').once('value');
-      l(`  Members: ${Object.keys(members.val() || {}).length}`, 'success');
-
-      const players = await db.ref('groups/' + DEFAULT_GROUP_ID + '/players').once('value');
-      l(`  Players: ${Object.keys(players.val() || {}).length}`, 'success');
-
-      const predictions = await db.ref('groups/' + DEFAULT_GROUP_ID + '/predictions').once('value');
-      l(`  Predictions: ${Object.keys(predictions.val() || {}).length}`, 'success');
-
-      const results = await db.ref('results').once('value');
-      l(`  Results (global): ${Object.keys(results.val() || {}).length}`, 'success');
-
-      const users = await db.ref('users').once('value');
-      l(`  Global users: ${Object.keys(users.val() || {}).length}`, 'success');
-
-      const codes = await db.ref('groupCodes').once('value');
-      l(`  Group codes: ${JSON.stringify(codes.val())}`, 'success');
-
-      // Check old data is gone
-      const oldPlayers = await db.ref('players').once('value');
-      const oldPredictions = await db.ref('predictions').once('value');
-      if (oldPlayers.exists() || oldPredictions.exists()) {
-        l('  WARNING: Old root-level players/predictions still exist!', 'warning');
-      } else {
-        l('  Old root-level data cleaned up.', 'success');
-      }
-
-      l('');
-      l('=== Verification Complete ===', 'success');
-    }
-
-    async function rollback() {
-      if (!confirm('Are you sure? This will undo the migration and restore old structure.')) return;
-
-      l('');
-      l('=== Rolling Back ===', 'warning');
-
-      // Read from group
-      const players = await db.ref('groups/' + DEFAULT_GROUP_ID + '/players').once('value');
-      const predictions = await db.ref('groups/' + DEFAULT_GROUP_ID + '/predictions').once('value');
-
-      if (!players.exists()) {
-        l('  ERROR: No group data found to rollback from', 'error');
-        return;
-      }
-
-      // Restore old structure
-      const updates = {};
-      Object.entries(players.val() || {}).forEach(([k, v]) => {
-        updates[`players/${k}`] = v;
-      });
-      Object.entries(predictions.val() || {}).forEach(([k, v]) => {
-        updates[`predictions/${k}`] = v;
-      });
-
-      await db.ref().update(updates);
-      l('  Restored root /players and /predictions');
-
-      // Remove new structure
-      await db.ref('groups').remove();
-      await db.ref('users').remove();
-      await db.ref('groupCodes').remove();
-      l('  Removed groups/, users/, groupCodes/');
-
-      l('');
-      l('=== Rollback Complete ===', 'success');
     }
   </script>
 </body>
