@@ -1950,11 +1950,34 @@ function showProfile(playerKey) {
   }
 
   // Prediction history
-  let historyHtml = '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--card-border);"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">All Predictions</div>';
-  decidedMatches.reverse().forEach(mId => {
+  // Deduplicate results — prefer api_ keys, skip md_ if api_ exists for same match
+  const seenMatches = new Set();
+  const uniqueDecided = [];
+  decidedMatches.forEach(mId => {
     const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
-    const pred = predictions[playerKey + '_' + mId];
+    const matchKey = match.team1 + '_' + match.team2;
+    if (seenMatches.has(matchKey)) return;
+    seenMatches.add(matchKey);
+    uniqueDecided.push(mId);
+  });
+
+  let historyHtml = '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--card-border);"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">All Predictions</div>';
+  uniqueDecided.reverse().forEach(mId => {
+    const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
+    if (!match) return;
+    // Check prediction under this key, or try alternate key format
+    let pred = predictions[playerKey + '_' + mId];
+    if (!pred && mId.startsWith('md')) {
+      // Try finding api_ key for same match
+      const apiMatch = getAllMatches().find(m => m.team1 === match.team1 && m.team2 === match.team2 && m.id.startsWith('api_'));
+      if (apiMatch) pred = predictions[playerKey + '_' + apiMatch.id];
+    }
+    if (!pred && mId.startsWith('api_')) {
+      // Try finding md_ key for same match
+      const mdMatch = MATCHES.find(m => m.team1 === match.team1 && m.team2 === match.team2);
+      if (mdMatch) pred = predictions[playerKey + '_' + mdMatch.id];
+    }
     const correct = pred === results[mId];
     historyHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:12px;border-bottom:1px solid var(--card-border);">
       <span style="flex:1;font-weight:500;">${match.team1} vs ${match.team2}</span>
