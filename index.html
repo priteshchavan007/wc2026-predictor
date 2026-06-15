@@ -845,6 +845,11 @@
 </head>
 <body>
 
+<!-- Pull to refresh indicator -->
+<div id="ptr-indicator" style="position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;height:0;overflow:hidden;z-index:9999;background:var(--teal);color:#fff;font-size:12px;font-weight:700;transition:height 0.2s ease;letter-spacing:0.5px;">
+  Refreshing...
+</div>
+
 <!-- Vibrant background blobs -->
 <div class="bg-blobs">
   <div class="blob blob-1"></div>
@@ -2244,6 +2249,36 @@ function findLocalMatch(homeTeam, awayTeam) {
 function getApiScore(match) {
   return liveScores[match.id] || null;
 }
+
+// ========== PULL TO REFRESH ==========
+let ptrStartY = 0;
+let ptrActive = false;
+
+document.addEventListener('touchstart', e => {
+  if (window.scrollY === 0) ptrStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (ptrStartY === 0) return;
+  const diff = e.touches[0].clientY - ptrStartY;
+  if (diff > 60 && window.scrollY === 0 && !ptrActive) {
+    ptrActive = true;
+    const indicator = document.getElementById('ptr-indicator');
+    indicator.style.height = '36px';
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  if (ptrActive) {
+    ptrActive = false;
+    fetchLiveScores();
+    render();
+    setTimeout(() => {
+      document.getElementById('ptr-indicator').style.height = '0';
+    }, 800);
+  }
+  ptrStartY = 0;
+});
 
 // ========== ANALYTICS ==========
 function trackEvent(event) {
