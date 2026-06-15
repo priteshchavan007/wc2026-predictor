@@ -1950,7 +1950,7 @@ function showProfile(playerKey) {
   }
 
   // Prediction history
-  // Deduplicate results — prefer api_ keys, skip md_ if api_ exists for same match
+  // Deduplicate and sort by kickoff time (latest first)
   const seenMatches = new Set();
   const uniqueDecided = [];
   decidedMatches.forEach(mId => {
@@ -1959,11 +1959,12 @@ function showProfile(playerKey) {
     const matchKey = match.team1 + '_' + match.team2;
     if (seenMatches.has(matchKey)) return;
     seenMatches.add(matchKey);
-    uniqueDecided.push(mId);
+    uniqueDecided.push({ mId, match, kickoff: getKickoffTime(match) });
   });
+  uniqueDecided.sort((a, b) => b.kickoff - a.kickoff);
 
   let historyHtml = '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--card-border);"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px;">All Predictions</div>';
-  uniqueDecided.reverse().forEach(mId => {
+  uniqueDecided.forEach(({ mId }) => {
     const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
     // Check prediction under this key, or try alternate key format
