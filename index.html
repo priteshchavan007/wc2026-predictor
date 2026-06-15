@@ -1070,30 +1070,50 @@ function requestNotifPermission() {
       notificationsEnabled = true;
       localStorage.setItem('wc2026_notifs', 'true');
       scheduleUpcomingNotifications();
-      // Remove the prompt
-      const prompt = document.querySelector('.notif-prompt');
-      if (prompt) prompt.remove();
+      render();
     }
   });
 }
 
+function disableNotifications() {
+  notificationsEnabled = false;
+  localStorage.setItem('wc2026_notifs', 'false');
+  // Clear all scheduled timeouts
+  Object.values(scheduledNotifications).forEach(t => clearTimeout(t));
+  scheduledNotifications = {};
+  render();
+}
+
+function dismissNotifPrompt() {
+  localStorage.setItem('wc2026_notifs_dismissed', 'true');
+  const prompt = document.querySelector('.notif-prompt');
+  if (prompt) prompt.remove();
+}
+
 function scheduleUpcomingNotifications() {
   if (!notificationsEnabled) return;
+  // Clear existing schedules
+  Object.values(scheduledNotifications).forEach(t => clearTimeout(t));
+  scheduledNotifications = {};
+
+  const now = Date.now();
   getAllMatches().forEach(match => {
     if (results[match.id]) return;
     const kickoff = getKickoffTime(match);
+    if (!kickoff || kickoff <= now) return;
     const fiveMinBefore = kickoff - (5 * 60 * 1000);
-    const now = Date.now();
-    if (fiveMinBefore > now && !scheduledNotifications[match.id]) {
-      const timeout = setTimeout(() => {
-        new Notification('Match Starting Soon!', {
-          body: `${match.flag1} ${match.team1} vs ${match.team2} ${match.flag2} kicks off in 5 minutes!`,
-          icon: '⚽',
-          tag: match.id
-        });
-      }, fiveMinBefore - now);
-      scheduledNotifications[match.id] = timeout;
-    }
+    if (fiveMinBefore <= now) return;
+
+    const delay = fiveMinBefore - now;
+    // Only schedule if within 24 hours (avoid memory issues)
+    if (delay > 24 * 60 * 60 * 1000) return;
+
+    scheduledNotifications[match.id] = setTimeout(() => {
+      new Notification('Match Starting Soon! ⚽', {
+        body: `${match.team1} vs ${match.team2} kicks off in 5 minutes! Make your prediction now.`,
+        tag: match.id
+      });
+    }, delay);
   });
 }
 
@@ -1687,11 +1707,19 @@ function renderPredict() {
 
   let html = '';
 
-  // Notification prompt
-  if (!notificationsEnabled && 'Notification' in window && Notification.permission !== 'denied') {
+  // Notification prompt or disable option
+  if (notificationsEnabled) {
+    html += `<div class="notif-prompt">
+      <span>🔔 Notifications on</span>
+      <button class="notif-btn" onclick="disableNotifications()" style="border-color:var(--red);color:var(--red);background:rgba(255,61,87,0.1);">Turn off</button>
+    </div>`;
+  } else if ('Notification' in window && Notification.permission !== 'denied' && localStorage.getItem('wc2026_notifs_dismissed') !== 'true') {
     html += `<div class="notif-prompt">
       <span>Get notified 5 min before kickoff</span>
-      <button class="notif-btn" onclick="requestNotifPermission()">Enable</button>
+      <div style="display:flex;gap:6px;">
+        <button class="notif-btn" onclick="requestNotifPermission()">Enable</button>
+        <button class="notif-btn" onclick="dismissNotifPrompt()" style="border-color:var(--text-secondary);color:var(--text-secondary);background:transparent;">Dismiss</button>
+      </div>
     </div>`;
   }
 
