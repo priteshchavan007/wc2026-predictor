@@ -2110,19 +2110,38 @@ function showRules() {
 
 function renderResults() {
   const container = document.getElementById('tab-results');
-  const completed = getAllMatches().filter(m => results[m.id] || isMatchLocked(m));
+  const allCompleted = getAllMatches().filter(m => results[m.id] || isMatchLocked(m));
+  // Deduplicate — same match can exist under both md* and api_* IDs
+  const seenResultMatches = new Set();
+  const completed = [];
+  allCompleted.forEach(m => {
+    const key = m.team1 + '_' + m.team2;
+    if (seenResultMatches.has(key)) return;
+    seenResultMatches.add(key);
+    completed.push(m);
+  });
 
   if (completed.length === 0) {
     container.innerHTML = '<div class="section-label">Results</div><div class="empty"><div class="empty-icon">⏳</div><p style="font-size:15px;font-weight:600;">No results yet.<br><span style="font-weight:400;font-size:13px;">Check back after matches are played!</span></p></div>';
     return;
   }
 
+  completed.sort((a, b) => getKickoffTime(b) - getKickoffTime(a));
+
   let html = '<div class="section-label">Matches</div>';
-  [...completed].reverse().forEach(match => {
+  completed.forEach(match => {
     const winner = results[match.id];
     const hasResult = !!winner;
-    const userKey = currentUser + '_' + match.id;
-    const userPick = predictions[userKey];
+    // Cross-check both key formats for user's prediction
+    let userPick = predictions[currentUser + '_' + match.id];
+    if (!userPick && match.id.startsWith('md')) {
+      const apiMatch = getAllMatches().find(m => m.team1 === match.team1 && m.team2 === match.team2 && m.id.startsWith('api_'));
+      if (apiMatch) userPick = predictions[currentUser + '_' + apiMatch.id];
+    }
+    if (!userPick && match.id.startsWith('api_')) {
+      const mdMatch = MATCHES.find(m => m.team1 === match.team1 && m.team2 === match.team2);
+      if (mdMatch) userPick = predictions[currentUser + '_' + mdMatch.id];
+    }
     const isCorrect = hasResult && userPick === winner;
     const isDraw = winner === 'Draw';
     const team1Won = winner === match.team1;
