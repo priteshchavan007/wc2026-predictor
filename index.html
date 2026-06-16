@@ -2378,7 +2378,9 @@ let liveScores = {};
 
 async function fetchLiveScores() {
   try {
-    const res = await fetch('/.netlify/functions/scores');
+    const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
+      headers: { 'X-Auth-Token': '49b916e7852b422187139132b9cb6ad7' }
+    });
     const data = await res.json();
     const apiMatches = data.matches || [];
 
