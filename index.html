@@ -1313,6 +1313,112 @@ const MATCHES = [
   { id: 'md3_24', team1: 'Jordan', team2: 'Argentina', flag1: '🇯🇴', flag2: '🇦🇷', group: 'Group J', date: '2026-06-28', time: 'Jun 28, 7:30 AM IST', venue: 'Dallas' },
 ];
 
+// ========== API MATCH ID MAP (for cross-referencing when API is unavailable) ==========
+const API_MATCH_MAP = {
+  537327: ["Mexico", "South Africa"],
+  537328: ["Korea Republic", "Czechia"],
+  537333: ["Canada", "Bosnia-H."],
+  537345: ["USA", "Paraguay"],
+  537334: ["Qatar", "Switzerland"],
+  537339: ["Brazil", "Morocco"],
+  537340: ["Haiti", "Scotland"],
+  537346: ["Australia", "Turkey"],
+  537351: ["Germany", "Curaçao"],
+  537357: ["Netherlands", "Japan"],
+  537352: ["Ivory Coast", "Ecuador"],
+  537358: ["Sweden", "Tunisia"],
+  537369: ["Spain", "Cape Verde"],
+  537363: ["Belgium", "Egypt"],
+  537370: ["Saudi Arabia", "Uruguay"],
+  537364: ["Iran", "New Zealand"],
+  537391: ["France", "Senegal"],
+  537392: ["Iraq", "Norway"],
+  537397: ["Argentina", "Algeria"],
+  537398: ["Austria", "Jordan"],
+  537403: ["Portugal", "Congo DR"],
+  537409: ["England", "Croatia"],
+  537410: ["Ghana", "Panama"],
+  537404: ["Uzbekistan", "Colombia"],
+  537329: ["Czechia", "South Africa"],
+  537335: ["Switzerland", "Bosnia-H."],
+  537336: ["Canada", "Qatar"],
+  537330: ["Mexico", "Korea Republic"],
+  537348: ["USA", "Australia"],
+  537342: ["Scotland", "Morocco"],
+  537341: ["Brazil", "Haiti"],
+  537347: ["Turkey", "Paraguay"],
+  537359: ["Netherlands", "Sweden"],
+  537353: ["Germany", "Ivory Coast"],
+  537354: ["Ecuador", "Curaçao"],
+  537360: ["Tunisia", "Japan"],
+  537371: ["Spain", "Saudi Arabia"],
+  537365: ["Belgium", "Iran"],
+  537372: ["Uruguay", "Cape Verde"],
+  537366: ["New Zealand", "Egypt"],
+  537399: ["Argentina", "Austria"],
+  537393: ["France", "Iraq"],
+  537394: ["Norway", "Senegal"],
+  537400: ["Jordan", "Algeria"],
+  537405: ["Portugal", "Uzbekistan"],
+  537411: ["England", "Ghana"],
+  537412: ["Panama", "Croatia"],
+  537406: ["Colombia", "Congo DR"],
+  537337: ["Switzerland", "Canada"],
+  537338: ["Bosnia-H.", "Qatar"],
+  537344: ["Morocco", "Haiti"],
+  537343: ["Scotland", "Brazil"],
+  537331: ["Czechia", "Mexico"],
+  537332: ["South Africa", "Korea Republic"],
+  537355: ["Ecuador", "Germany"],
+  537356: ["Curaçao", "Ivory Coast"],
+  537361: ["Tunisia", "Netherlands"],
+  537362: ["Japan", "Sweden"],
+  537349: ["Turkey", "USA"],
+  537350: ["Paraguay", "Australia"],
+  537395: ["Norway", "France"],
+  537396: ["Senegal", "Iraq"],
+  537373: ["Uruguay", "Spain"],
+  537374: ["Cape Verde", "Saudi Arabia"],
+  537367: ["New Zealand", "Belgium"],
+  537368: ["Egypt", "Iran"],
+  537413: ["Panama", "England"],
+  537414: ["Croatia", "Ghana"],
+  537407: ["Colombia", "Portugal"],
+  537408: ["Congo DR", "Uzbekistan"],
+  537401: ["Jordan", "Argentina"],
+  537402: ["Algeria", "Austria"],
+};
+
+function getApiMatchTeams(apiId) {
+  const numId = apiId.replace('api_', '');
+  const entry = API_MATCH_MAP[numId];
+  if (entry) return { team1: entry[0], team2: entry[1] };
+  const dm = dynamicMatches.find(d => d.id === apiId);
+  if (dm) return { team1: dm.team1, team2: dm.team2 };
+  return null;
+}
+
+function findMdMatchForApi(apiId) {
+  const teams = getApiMatchTeams(apiId);
+  if (!teams) return null;
+  return MATCHES.find(mt =>
+    normalizeTeamName(mt.team1) === normalizeTeamName(teams.team1) &&
+    normalizeTeamName(mt.team2) === normalizeTeamName(teams.team2));
+}
+
+function findApiIdForMd(mdMatch) {
+  for (const [numId, teams] of Object.entries(API_MATCH_MAP)) {
+    if (normalizeTeamName(teams[0]) === normalizeTeamName(mdMatch.team1) &&
+        normalizeTeamName(teams[1]) === normalizeTeamName(mdMatch.team2)) {
+      return 'api_' + numId;
+    }
+  }
+  const dm = dynamicMatches.find(d =>
+    normalizeTeamName(d.team1) === normalizeTeamName(mdMatch.team1) &&
+    normalizeTeamName(d.team2) === normalizeTeamName(mdMatch.team2));
+  return dm ? dm.id : null;
+}
+
 // ========== STATE ==========
 let currentUser = localStorage.getItem('wc2026_user');
 let currentGroup = localStorage.getItem('wc2026_group');
@@ -1330,11 +1436,11 @@ function getAllMatches() {
 function getResultForMatch(match) {
   if (results[match.id]) return results[match.id];
   if (match.id.startsWith('api_')) {
-    const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+    const mdMatch = findMdMatchForApi(match.id);
     if (mdMatch && results[mdMatch.id]) return results[mdMatch.id];
   } else if (match.id.startsWith('md')) {
-    const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
-    if (dynMatch && results[dynMatch.id]) return results[dynMatch.id];
+    const apiId = findApiIdForMd(match);
+    if (apiId && results[apiId]) return results[apiId];
   }
   return null;
 }
@@ -1343,11 +1449,11 @@ function getUserPrediction(user, match) {
   let pick = predictions[user + '_' + match.id];
   if (pick) return pick;
   if (match.id.startsWith('api_')) {
-    const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+    const mdMatch = findMdMatchForApi(match.id);
     if (mdMatch) pick = predictions[user + '_' + mdMatch.id];
   } else if (match.id.startsWith('md')) {
-    const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
-    if (dynMatch) pick = predictions[user + '_' + dynMatch.id];
+    const apiId = findApiIdForMd(match);
+    if (apiId) pick = predictions[user + '_' + apiId];
   }
   return pick || null;
 }
@@ -1841,9 +1947,15 @@ function calculateScores() {
     if (!playerKey) return;
 
     // Deduplicate by normalized match teams
-    const match = MATCHES.find(m => m.id === matchId) || dynamicMatches.find(m => m.id === matchId);
-    const dedupeKey = match
-      ? playerKey + '|' + normalizeTeamName(match.team1) + '|' + normalizeTeamName(match.team2)
+    let matchTeams = null;
+    if (matchId.startsWith('api_')) {
+      matchTeams = getApiMatchTeams(matchId);
+    } else {
+      const m = MATCHES.find(x => x.id === matchId);
+      if (m) matchTeams = { team1: m.team1, team2: m.team2 };
+    }
+    const dedupeKey = matchTeams
+      ? playerKey + '|' + normalizeTeamName(matchTeams.team1) + '|' + normalizeTeamName(matchTeams.team2)
       : playerKey + '|' + matchId;
     if (scored.has(dedupeKey)) return;
 
@@ -1851,19 +1963,11 @@ function calculateScores() {
     let result = results[matchId];
     if (!result) {
       if (matchId.startsWith('api_')) {
-        if (match) {
-          const mdMatch = MATCHES.find(mt =>
-            normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) &&
-            normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
-          if (mdMatch) result = results[mdMatch.id];
-        }
+        const mdMatch = findMdMatchForApi(matchId);
+        if (mdMatch) result = results[mdMatch.id];
       } else if (matchId.startsWith('md')) {
-        if (match) {
-          const dynMatch = dynamicMatches.find(dm =>
-            normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) &&
-            normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
-          if (dynMatch) result = results[dynMatch.id];
-        }
+        const apiId = findApiIdForMd(MATCHES.find(x => x.id === matchId));
+        if (apiId) result = results[apiId];
       }
     }
 
@@ -1885,20 +1989,14 @@ function calculateScores() {
       const mId = decidedMatches[i];
       let pred = predictions[playerKey + '_' + mId];
       if (!pred) {
-        // Try alternate ID format
         if (mId.startsWith('api_')) {
-          const dm = dynamicMatches.find(d => d.id === mId);
-          if (dm) {
-            const mdM = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(dm.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(dm.team2));
-            if (mdM) pred = predictions[playerKey + '_' + mdM.id];
-          }
+          const mdM = findMdMatchForApi(mId);
+          if (mdM) pred = predictions[playerKey + '_' + mdM.id];
         } else if (mId.startsWith('md')) {
           const mt = MATCHES.find(x => x.id === mId);
           if (mt) {
-            const dm = dynamicMatches.find(d =>
-              normalizeTeamName(d.team1) === normalizeTeamName(mt.team1) &&
-              normalizeTeamName(d.team2) === normalizeTeamName(mt.team2));
-            if (dm) pred = predictions[playerKey + '_' + dm.id];
+            const apiId = findApiIdForMd(mt);
+            if (apiId) pred = predictions[playerKey + '_' + apiId];
           }
         }
       }
@@ -2025,21 +2123,13 @@ function showProfile(playerKey) {
     let p = predictions[pk + '_' + mId];
     if (p) return p;
     if (mId.startsWith('api_')) {
-      const dm = dynamicMatches.find(d => d.id === mId);
-      if (dm) {
-        const mt = MATCHES.find(x => x.team1 === dm.team1 && x.team2 === dm.team2);
-        if (!mt) {
-          const mt2 = MATCHES.find(x => normalizeTeamName(x.team1) === normalizeTeamName(dm.team1) && normalizeTeamName(x.team2) === normalizeTeamName(dm.team2));
-          if (mt2) p = predictions[pk + '_' + mt2.id];
-        } else {
-          p = predictions[pk + '_' + mt.id];
-        }
-      }
+      const mdM = findMdMatchForApi(mId);
+      if (mdM) p = predictions[pk + '_' + mdM.id];
     } else if (mId.startsWith('md')) {
       const mt = MATCHES.find(x => x.id === mId);
       if (mt) {
-        const dm = dynamicMatches.find(d => normalizeTeamName(d.team1) === normalizeTeamName(mt.team1) && normalizeTeamName(d.team2) === normalizeTeamName(mt.team2));
-        if (dm) p = predictions[pk + '_' + dm.id];
+        const apiId = findApiIdForMd(mt);
+        if (apiId) p = predictions[pk + '_' + apiId];
       }
     }
     return p;
@@ -2351,11 +2441,11 @@ function predict(matchId, pick) {
   // Also store under alternate ID so prediction is visible regardless of which match list loads
   if (match) {
     if (matchId.startsWith('api_')) {
-      const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+      const mdMatch = findMdMatchForApi(matchId);
       if (mdMatch) db.ref(groupPath + currentUser + '_' + mdMatch.id).set(pick);
     } else if (matchId.startsWith('md')) {
-      const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
-      if (dynMatch) db.ref(groupPath + currentUser + '_' + dynMatch.id).set(pick);
+      const apiId = findApiIdForMd(match);
+      if (apiId) db.ref(groupPath + currentUser + '_' + apiId).set(pick);
     }
   }
   trackEvent('predictions');
@@ -2419,7 +2509,6 @@ async function fetchLiveScores() {
 
       // Also store under api_ ID for dynamic matches
       const apiId = 'api_' + m.id;
-      const dynMatch = dynamicMatches.find(dm => dm.id === apiId);
 
       // Store live score under both IDs
       if (hardcodedMatch) liveScores[hardcodedMatch.id] = scoreData;
