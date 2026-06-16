@@ -1098,7 +1098,7 @@ function scheduleUpcomingNotifications() {
 
   const now = Date.now();
   getAllMatches().forEach(match => {
-    if (results[match.id]) return;
+    if (getResultForMatch(match)) return;
     const kickoff = getKickoffTime(match);
     if (!kickoff || kickoff <= now) return;
     const fiveMinBefore = kickoff - (5 * 60 * 1000);
@@ -1325,6 +1325,31 @@ let activeListeners = [];
 
 function getAllMatches() {
   return dynamicMatches.length > 0 ? dynamicMatches : MATCHES;
+}
+
+function getResultForMatch(match) {
+  if (results[match.id]) return results[match.id];
+  if (match.id.startsWith('api_')) {
+    const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+    if (mdMatch && results[mdMatch.id]) return results[mdMatch.id];
+  } else if (match.id.startsWith('md')) {
+    const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
+    if (dynMatch && results[dynMatch.id]) return results[dynMatch.id];
+  }
+  return null;
+}
+
+function getUserPrediction(user, match) {
+  let pick = predictions[user + '_' + match.id];
+  if (pick) return pick;
+  if (match.id.startsWith('api_')) {
+    const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+    if (mdMatch) pick = predictions[user + '_' + mdMatch.id];
+  } else if (match.id.startsWith('md')) {
+    const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
+    if (dynMatch) pick = predictions[user + '_' + dynMatch.id];
+  }
+  return pick || null;
 }
 
 // ========== FIREBASE LISTENERS ==========
@@ -1698,7 +1723,7 @@ function renderPredict() {
 
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
-  const upcoming = getAllMatches().filter(m => !results[m.id] && !isMatchLocked(m));
+  const upcoming = getAllMatches().filter(m => !getResultForMatch(m) && !isMatchLocked(m));
   const grouped = {};
   upcoming.forEach(m => {
     if (!grouped[m.date]) grouped[m.date] = [];
@@ -1735,8 +1760,7 @@ function renderPredict() {
       html += `<div class="date-divider">${isToday ? '🔴 ' : ''}${label}</div>`;
 
       grouped[date].forEach(match => {
-        const key = currentUser + '_' + match.id;
-        const userPick = predictions[key];
+        const userPick = getUserPrediction(currentUser, match);
         const isPredicted = !!userPick;
         const kickoffTime = getKickoffTime(match);
         const canPredict = (kickoffTime - now) <= twentyFourHours;
@@ -1762,9 +1786,9 @@ function renderPredict() {
             </div>
             ${canPredict
               ? `<div class="predict-btns">
-                  <button class="predict-btn ${userPick === match.team1 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
                   <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">Draw</button>
-                  <button class="predict-btn ${userPick === match.team2 ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
                 </div>
                 ${isPredicted ? '<div class="prediction-status" style="font-size:11px;color:var(--text-secondary);">Tap another option to change your pick</div>' : ''}`
               : isPredicted
@@ -1798,6 +1822,9 @@ function calculateScores() {
   // Get match IDs sorted by date for streak calculation
   const decidedMatches = Object.keys(results);
 
+  // Deduplicate: track which player+match combos we've already scored
+  const scored = new Set();
+
   Object.keys(predictions).forEach(key => {
     let playerKey = '';
     let matchId = '';
@@ -1813,9 +1840,38 @@ function calculateScores() {
     }
     if (!playerKey) return;
 
-    if (results[matchId] && scores[playerKey] !== undefined) {
+    // Deduplicate by normalized match teams
+    const match = MATCHES.find(m => m.id === matchId) || dynamicMatches.find(m => m.id === matchId);
+    const dedupeKey = match
+      ? playerKey + '|' + normalizeTeamName(match.team1) + '|' + normalizeTeamName(match.team2)
+      : playerKey + '|' + matchId;
+    if (scored.has(dedupeKey)) return;
+
+    // Cross-check: find result under this ID or the alternate ID format
+    let result = results[matchId];
+    if (!result) {
+      if (matchId.startsWith('api_')) {
+        if (match) {
+          const mdMatch = MATCHES.find(mt =>
+            normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) &&
+            normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+          if (mdMatch) result = results[mdMatch.id];
+        }
+      } else if (matchId.startsWith('md')) {
+        if (match) {
+          const dynMatch = dynamicMatches.find(dm =>
+            normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) &&
+            normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
+          if (dynMatch) result = results[dynMatch.id];
+        }
+      }
+    }
+
+    if (result && scores[playerKey] !== undefined) {
+      scored.add(dedupeKey);
       scores[playerKey].total++;
-      if (predictions[key] === results[matchId]) {
+      const pred = predictions[key];
+      if (pred === result || normalizeTeamName(pred) === normalizeTeamName(result)) {
         scores[playerKey].points += 2;
         scores[playerKey].correct++;
       }
@@ -1827,8 +1883,26 @@ function calculateScores() {
     let streak = 0;
     for (let i = decidedMatches.length - 1; i >= 0; i--) {
       const mId = decidedMatches[i];
-      const predKey = playerKey + '_' + mId;
-      if (predictions[predKey] && predictions[predKey] === results[mId]) {
+      let pred = predictions[playerKey + '_' + mId];
+      if (!pred) {
+        // Try alternate ID format
+        if (mId.startsWith('api_')) {
+          const dm = dynamicMatches.find(d => d.id === mId);
+          if (dm) {
+            const mdM = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(dm.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(dm.team2));
+            if (mdM) pred = predictions[playerKey + '_' + mdM.id];
+          }
+        } else if (mId.startsWith('md')) {
+          const mt = MATCHES.find(x => x.id === mId);
+          if (mt) {
+            const dm = dynamicMatches.find(d =>
+              normalizeTeamName(d.team1) === normalizeTeamName(mt.team1) &&
+              normalizeTeamName(d.team2) === normalizeTeamName(mt.team2));
+            if (dm) pred = predictions[playerKey + '_' + dm.id];
+          }
+        }
+      }
+      if (pred && (pred === results[mId] || normalizeTeamName(pred) === normalizeTeamName(results[mId]))) {
         streak++;
       } else {
         break;
@@ -1845,7 +1919,14 @@ function renderLeaderboard() {
   const scores = calculateScores();
 
   const sorted = Object.entries(scores).sort((a, b) => b[1].points - a[1].points || b[1].correct - a[1].correct);
-  const totalResults = Object.keys(results).length;
+  // Deduplicate results count (same match can have both md* and api_* entries)
+  const seenResultTeams = new Set();
+  let totalResults = 0;
+  Object.keys(results).forEach(id => {
+    const match = MATCHES.find(m => m.id === id) || getAllMatches().find(m => m.id === id);
+    const key = match ? normalizeTeamName(match.team1) + '_' + normalizeTeamName(match.team2) : id;
+    if (!seenResultTeams.has(key)) { seenResultTeams.add(key); totalResults++; }
+  });
 
   // Calculate rank movements
   const currentRanks = {};
@@ -1860,9 +1941,10 @@ function renderLeaderboard() {
   let lastMatchWinners = [];
   if (decidedMatches.length > 0) {
     const lastMatch = decidedMatches[decidedMatches.length - 1];
+    const lastResult = results[lastMatch.id];
     Object.keys(players).forEach(pk => {
-      const predKey = pk + '_' + lastMatch.id;
-      if (predictions[predKey] === results[lastMatch.id]) {
+      const pred = getUserPrediction(pk, lastMatch);
+      if (pred && (pred === lastResult || normalizeTeamName(pred) === normalizeTeamName(lastResult))) {
         lastMatchWinners.push(players[pk].name || pk);
       }
     });
@@ -1938,12 +2020,42 @@ function showProfile(playerKey) {
   const stats = scores[playerKey] || { points: 0, correct: 0, total: 0, streak: 0 };
   const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
 
+  // Helper to find prediction across both ID formats
+  function findPred(pk, mId) {
+    let p = predictions[pk + '_' + mId];
+    if (p) return p;
+    if (mId.startsWith('api_')) {
+      const dm = dynamicMatches.find(d => d.id === mId);
+      if (dm) {
+        const mt = MATCHES.find(x => x.team1 === dm.team1 && x.team2 === dm.team2);
+        if (!mt) {
+          const mt2 = MATCHES.find(x => normalizeTeamName(x.team1) === normalizeTeamName(dm.team1) && normalizeTeamName(x.team2) === normalizeTeamName(dm.team2));
+          if (mt2) p = predictions[pk + '_' + mt2.id];
+        } else {
+          p = predictions[pk + '_' + mt.id];
+        }
+      }
+    } else if (mId.startsWith('md')) {
+      const mt = MATCHES.find(x => x.id === mId);
+      if (mt) {
+        const dm = dynamicMatches.find(d => normalizeTeamName(d.team1) === normalizeTeamName(mt.team1) && normalizeTeamName(d.team2) === normalizeTeamName(mt.team2));
+        if (dm) p = predictions[pk + '_' + dm.id];
+      }
+    }
+    return p;
+  }
+
+  function isPredCorrect(pred, result) {
+    if (!pred || !result) return false;
+    return pred === result || normalizeTeamName(pred) === normalizeTeamName(result);
+  }
+
   // Calculate longest streak
   const decidedMatches = Object.keys(results);
   let longestStreak = 0, tempStreak = 0;
   decidedMatches.forEach(mId => {
-    const predKey = playerKey + '_' + mId;
-    if (predictions[predKey] && predictions[predKey] === results[mId]) {
+    const pred = findPred(playerKey, mId);
+    if (pred && isPredCorrect(pred, results[mId])) {
       tempStreak++;
       if (tempStreak > longestStreak) longestStreak = tempStreak;
     } else {
@@ -1957,11 +2069,11 @@ function showProfile(playerKey) {
     const myStats = scores[currentUser] || { points: 0, correct: 0, total: 0 };
     let myWins = 0, theirWins = 0, ties = 0;
     decidedMatches.forEach(mId => {
-      const myPred = predictions[currentUser + '_' + mId];
-      const theirPred = predictions[playerKey + '_' + mId];
+      const myPred = findPred(currentUser, mId);
+      const theirPred = findPred(playerKey, mId);
       const result = results[mId];
-      const myCorrect = myPred === result;
-      const theirCorrect = theirPred === result;
+      const myCorrect = isPredCorrect(myPred, result);
+      const theirCorrect = isPredCorrect(theirPred, result);
       if (myCorrect && !theirCorrect) myWins++;
       else if (!myCorrect && theirCorrect) theirWins++;
       else ties++;
@@ -1995,19 +2107,8 @@ function showProfile(playerKey) {
   uniqueDecided.forEach(({ mId }) => {
     const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
-    // Check prediction under this key, or try alternate key format
-    let pred = predictions[playerKey + '_' + mId];
-    if (!pred && mId.startsWith('md')) {
-      // Try finding api_ key for same match
-      const apiMatch = getAllMatches().find(m => m.team1 === match.team1 && m.team2 === match.team2 && m.id.startsWith('api_'));
-      if (apiMatch) pred = predictions[playerKey + '_' + apiMatch.id];
-    }
-    if (!pred && mId.startsWith('api_')) {
-      // Try finding md_ key for same match
-      const mdMatch = MATCHES.find(m => m.team1 === match.team1 && m.team2 === match.team2);
-      if (mdMatch) pred = predictions[playerKey + '_' + mdMatch.id];
-    }
-    const correct = pred === results[mId];
+    const pred = findPred(playerKey, mId);
+    const correct = isPredCorrect(pred, results[mId]);
     historyHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:12px;border-bottom:1px solid var(--card-border);">
       <span style="flex:1;font-weight:500;">${match.team1} vs ${match.team2}</span>
       <span style="font-weight:700;margin:0 8px;color:${pred ? 'var(--text)' : 'var(--text-secondary)'};">${pred || '—'}</span>
@@ -2138,12 +2239,16 @@ function showRules() {
 
 function renderResults() {
   const container = document.getElementById('tab-results');
-  const allCompleted = getAllMatches().filter(m => results[m.id] || isMatchLocked(m));
+  const allCompleted = getAllMatches().filter(m => getResultForMatch(m) || isMatchLocked(m));
+  // Also include hardcoded matches that have results
+  MATCHES.forEach(m => {
+    if (results[m.id] && !allCompleted.find(x => x.id === m.id)) allCompleted.push(m);
+  });
   // Deduplicate — same match can exist under both md* and api_* IDs
   const seenResultMatches = new Set();
   const completed = [];
   allCompleted.forEach(m => {
-    const key = m.team1 + '_' + m.team2;
+    const key = normalizeTeamName(m.team1) + '_' + normalizeTeamName(m.team2);
     if (seenResultMatches.has(key)) return;
     seenResultMatches.add(key);
     completed.push(m);
@@ -2158,22 +2263,13 @@ function renderResults() {
 
   let html = '<div class="section-label">Matches</div>';
   completed.forEach(match => {
-    const winner = results[match.id];
+    const winner = getResultForMatch(match);
     const hasResult = !!winner;
-    // Cross-check both key formats for user's prediction
-    let userPick = predictions[currentUser + '_' + match.id];
-    if (!userPick && match.id.startsWith('md')) {
-      const apiMatch = getAllMatches().find(m => m.team1 === match.team1 && m.team2 === match.team2 && m.id.startsWith('api_'));
-      if (apiMatch) userPick = predictions[currentUser + '_' + apiMatch.id];
-    }
-    if (!userPick && match.id.startsWith('api_')) {
-      const mdMatch = MATCHES.find(m => m.team1 === match.team1 && m.team2 === match.team2);
-      if (mdMatch) userPick = predictions[currentUser + '_' + mdMatch.id];
-    }
-    const isCorrect = hasResult && userPick === winner;
+    const userPick = getUserPrediction(currentUser, match);
+    const isCorrect = hasResult && (userPick === winner || normalizeTeamName(userPick || '') === normalizeTeamName(winner));
     const isDraw = winner === 'Draw';
-    const team1Won = winner === match.team1;
-    const team2Won = winner === match.team2;
+    const team1Won = normalizeTeamName(winner || '') === normalizeTeamName(match.team1);
+    const team2Won = normalizeTeamName(winner || '') === normalizeTeamName(match.team2);
 
     const apiData = getApiScore(match);
     const scoreDisplay = apiData && apiData.homeScore !== null
@@ -2243,13 +2339,25 @@ function handlePredict(event, matchId, pick) {
 }
 
 function predict(matchId, pick) {
-  const match = getAllMatches().find(m => m.id === matchId);
+  const match = getAllMatches().find(m => m.id === matchId) || MATCHES.find(m => m.id === matchId);
   if (match && isMatchLocked(match)) {
     alert('This match has already started. Predictions are locked.');
     return;
   }
   const key = currentUser + '_' + matchId;
-  db.ref('groups/' + currentGroup + '/predictions/' + key).set(pick);
+  const groupPath = 'groups/' + currentGroup + '/predictions/';
+  db.ref(groupPath + key).set(pick);
+
+  // Also store under alternate ID so prediction is visible regardless of which match list loads
+  if (match) {
+    if (matchId.startsWith('api_')) {
+      const mdMatch = MATCHES.find(mt => normalizeTeamName(mt.team1) === normalizeTeamName(match.team1) && normalizeTeamName(mt.team2) === normalizeTeamName(match.team2));
+      if (mdMatch) db.ref(groupPath + currentUser + '_' + mdMatch.id).set(pick);
+    } else if (matchId.startsWith('md')) {
+      const dynMatch = dynamicMatches.find(dm => normalizeTeamName(dm.team1) === normalizeTeamName(match.team1) && normalizeTeamName(dm.team2) === normalizeTeamName(match.team2));
+      if (dynMatch) db.ref(groupPath + currentUser + '_' + dynMatch.id).set(pick);
+    }
+  }
   trackEvent('predictions');
 }
 
@@ -2307,31 +2415,35 @@ async function fetchLiveScores() {
                (a === apiA || a.includes(apiA) || apiA.includes(a));
       });
 
-      // Store under hardcoded ID
-      if (hardcodedMatch) {
-        liveScores[hardcodedMatch.id] = scoreData;
-
-        if (status === 'FINISHED' && score.winner && !results[hardcodedMatch.id]) {
-          let winnerName;
-          if (score.winner === 'HOME_TEAM') winnerName = hardcodedMatch.team1;
-          else if (score.winner === 'AWAY_TEAM') winnerName = hardcodedMatch.team2;
-          else winnerName = 'Draw';
-          db.ref('results/' + hardcodedMatch.id).set(winnerName);
-        }
-      }
-
       // Also store under api_ ID for dynamic matches
       const apiId = 'api_' + m.id;
+      const dynMatch = dynamicMatches.find(dm => dm.id === apiId);
+
+      // Store live score under both IDs
+      if (hardcodedMatch) liveScores[hardcodedMatch.id] = scoreData;
       liveScores[apiId] = scoreData;
 
-      if (!hardcodedMatch && status === 'FINISHED' && score.winner && !results[apiId]) {
-        const dynMatch = dynamicMatches.find(dm => dm.id === apiId);
-        if (dynMatch) {
-          let winnerName;
-          if (score.winner === 'HOME_TEAM') winnerName = dynMatch.team1;
-          else if (score.winner === 'AWAY_TEAM') winnerName = dynMatch.team2;
-          else winnerName = 'Draw';
-          db.ref('results/' + apiId).set(winnerName);
+      if (status === 'FINISHED' && score.winner) {
+        // Determine winner names for both hardcoded and dynamic team names
+        let hardcodedWinner, dynamicWinner;
+        if (score.winner === 'HOME_TEAM') {
+          hardcodedWinner = hardcodedMatch ? hardcodedMatch.team1 : homeName;
+          dynamicWinner = homeName;
+        } else if (score.winner === 'AWAY_TEAM') {
+          hardcodedWinner = hardcodedMatch ? hardcodedMatch.team2 : awayName;
+          dynamicWinner = awayName;
+        } else {
+          hardcodedWinner = 'Draw';
+          dynamicWinner = 'Draw';
+        }
+
+        // Store result under hardcoded ID using hardcoded team name
+        if (hardcodedMatch && !results[hardcodedMatch.id]) {
+          db.ref('results/' + hardcodedMatch.id).set(hardcodedWinner);
+        }
+        // Store result under api_ ID using dynamic team name (matches predictions)
+        if (!results[apiId]) {
+          db.ref('results/' + apiId).set(dynamicWinner);
         }
       }
     });
@@ -2354,6 +2466,7 @@ const TEAM_NAME_MAP = {
   "cote d'ivoire": 'ivory coast',
   'congo dr': 'dr congo',
   'cape verde islands': 'cape verde',
+  'curaçao': 'curacao',
 };
 
 function normalizeTeamName(name) {
