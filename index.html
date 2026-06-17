@@ -1485,6 +1485,16 @@ function initListeners() {
   });
   activeListeners.push({ ref: resRef, type: 'value', cb: resCb });
 
+  const scoresRef = db.ref('scores');
+  const scoresCb = scoresRef.on('value', snap => {
+    const fbScores = snap.val() || {};
+    Object.keys(fbScores).forEach(id => {
+      if (!liveScores[id]) liveScores[id] = fbScores[id];
+    });
+    render();
+  });
+  activeListeners.push({ ref: scoresRef, type: 'value', cb: scoresCb });
+
   const playRef = db.ref(groupPath + '/players');
   const playCb = playRef.on('value', snap => {
     players = snap.val() || {};
@@ -2577,7 +2587,15 @@ function findLocalMatch(homeTeam, awayTeam) {
 }
 
 function getApiScore(match) {
-  return liveScores[match.id] || null;
+  if (liveScores[match.id]) return liveScores[match.id];
+  if (match.id.startsWith('md')) {
+    const apiId = findApiIdForMd(match);
+    if (apiId && liveScores[apiId]) return liveScores[apiId];
+  } else if (match.id.startsWith('api_')) {
+    const mdMatch = findMdMatchForApi(match.id);
+    if (mdMatch && liveScores[mdMatch.id]) return liveScores[mdMatch.id];
+  }
+  return null;
 }
 
 // ========== PULL TO REFRESH ==========
@@ -2658,6 +2676,14 @@ if (currentUser) {
 // Fetch live scores regardless of auth state
 fetchLiveScores();
 setInterval(fetchLiveScores, 60000);
+
+// Load scores from Firebase (works even when API is CORS-blocked)
+db.ref('scores').on('value', snap => {
+  const fbScores = snap.val() || {};
+  Object.keys(fbScores).forEach(id => {
+    liveScores[id] = fbScores[id];
+  });
+});
 </script>
 </body>
 </html>

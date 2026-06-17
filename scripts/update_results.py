@@ -162,6 +162,37 @@ def main():
         if firebase_put(f"results/{api_id}", dyn_winner):
             updated += 1
 
+        # Write score data
+        ft = score.get("fullTime", {})
+        score_data = {
+            "homeScore": ft.get("home"),
+            "awayScore": ft.get("away"),
+            "status": m["status"],
+        }
+        if mid:
+            firebase_put(f"scores/{mid}", score_data)
+        firebase_put(f"scores/{api_id}", score_data)
+
+    # Also write live/in-play matches
+    for m in matches:
+        if m["status"] not in ("IN_PLAY", "PAUSED"):
+            continue
+        home = m["homeTeam"].get("shortName", "")
+        away = m["awayTeam"].get("shortName", "")
+        if not home or not away:
+            continue
+        mid, t1, t2 = find_hardcoded(home, away)
+        api_id = f'api_{m["id"]}'
+        ft = m["score"].get("fullTime", {})
+        score_data = {
+            "homeScore": ft.get("home"),
+            "awayScore": ft.get("away"),
+            "status": m["status"],
+        }
+        if mid:
+            firebase_put(f"scores/{mid}", score_data)
+        firebase_put(f"scores/{api_id}", score_data)
+
     finished = len([m for m in matches if m["status"] == "FINISHED"])
     print(f"Updated {updated} result entries for {finished} finished matches")
 
