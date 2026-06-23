@@ -1944,13 +1944,14 @@ function renderPredict() {
                 ? (() => {
                     const pw = getPredWinner(userPick);
                     const ps = getPredScore(userPick);
-                    return `<div class="score-steppers" style="display:flex;justify-content:space-around;align-items:center;margin-top:4px;margin-bottom:12px;padding:0 10px;">
-                      <div style="display:flex;align-items:center;gap:10px;">
+                    return `<div class="score-steppers" style="display:flex;align-items:center;margin-top:4px;margin-bottom:12px;">
+                      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;">
                         <button onclick="stepGoal('${match.id}','home',-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
                         <span id="home_${match.id}" style="font-size:24px;font-weight:900;min-width:24px;text-align:center;color:var(--text);">${ps ? ps.home : '0'}</span>
                         <button onclick="stepGoal('${match.id}','home',1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
                       </div>
-                      <div style="display:flex;align-items:center;gap:10px;">
+                      <div style="width:40px;"></div>
+                      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;">
                         <button onclick="stepGoal('${match.id}','away',-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
                         <span id="away_${match.id}" style="font-size:24px;font-weight:900;min-width:24px;text-align:center;color:var(--text);">${ps ? ps.away : '0'}</span>
                         <button onclick="stepGoal('${match.id}','away',1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
