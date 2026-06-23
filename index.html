@@ -1949,12 +1949,17 @@ function renderPredict() {
                       <button class="predict-btn ${pw === 'Draw' ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','Draw')">Draw</button>
                       <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
                     </div>
-                    <div class="score-inputs" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;">
-                      <span style="font-size:11px;color:var(--text-secondary);">${match.team1.split(' ').pop()}</span>
-                      <input type="number" min="0" max="20" id="home_${match.id}" value="${ps ? ps.home : ''}" placeholder="-" style="width:40px;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:var(--text);font-size:16px;font-weight:700;" onchange="handleGoalInput('${match.id}')">
-                      <span style="font-size:13px;font-weight:700;color:var(--text-secondary);">-</span>
-                      <input type="number" min="0" max="20" id="away_${match.id}" value="${ps ? ps.away : ''}" placeholder="-" style="width:40px;text-align:center;padding:6px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:var(--text);font-size:16px;font-weight:700;" onchange="handleGoalInput('${match.id}')">
-                      <span style="font-size:11px;color:var(--text-secondary);">${match.team2.split(' ').pop()}</span>
+                    <div class="score-steppers" style="display:flex;justify-content:space-around;align-items:center;margin-top:14px;padding:0 10px;">
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <button onclick="stepGoal('${match.id}','home',-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+                        <span id="home_${match.id}" style="font-size:24px;font-weight:900;min-width:24px;text-align:center;color:var(--text);">${ps ? ps.home : '0'}</span>
+                        <button onclick="stepGoal('${match.id}','home',1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <button onclick="stepGoal('${match.id}','away',-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+                        <span id="away_${match.id}" style="font-size:24px;font-weight:900;min-width:24px;text-align:center;color:var(--text);">${ps ? ps.away : '0'}</span>
+                        <button onclick="stepGoal('${match.id}','away',1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+                      </div>
                     </div>
                     ${pw ? '<div class="prediction-status" style="font-size:11px;color:var(--text-secondary);margin-top:6px;">Score prediction = bonus points!</div>' : ''}`;
                   })()
@@ -2560,27 +2565,25 @@ function handlePredict(event, matchId, pick) {
 function handleScorePredict(matchId, winner) {
   const homeEl = document.getElementById('home_' + matchId);
   const awayEl = document.getElementById('away_' + matchId);
-  const home = homeEl && homeEl.value !== '' ? parseInt(homeEl.value) : undefined;
-  const away = awayEl && awayEl.value !== '' ? parseInt(awayEl.value) : undefined;
-  const pick = { winner };
-  if (home !== undefined && away !== undefined) {
-    pick.home = home;
-    pick.away = away;
-  }
-  predict(matchId, pick);
+  const home = homeEl ? parseInt(homeEl.textContent) : 0;
+  const away = awayEl ? parseInt(awayEl.textContent) : 0;
+  predict(matchId, { winner, home, away });
 }
 
-function handleGoalInput(matchId) {
+function stepGoal(matchId, side, delta) {
+  const el = document.getElementById(side + '_' + matchId);
+  if (!el) return;
+  let val = parseInt(el.textContent) || 0;
+  val = Math.max(0, val + delta);
+  el.textContent = val;
   const existing = getUserPrediction(currentUser, { id: matchId });
   const winner = getPredWinner(existing);
   if (!winner) return;
   const homeEl = document.getElementById('home_' + matchId);
   const awayEl = document.getElementById('away_' + matchId);
-  const home = homeEl && homeEl.value !== '' ? parseInt(homeEl.value) : undefined;
-  const away = awayEl && awayEl.value !== '' ? parseInt(awayEl.value) : undefined;
-  if (home !== undefined && away !== undefined) {
-    predict(matchId, { winner, home, away });
-  }
+  const home = parseInt(homeEl.textContent) || 0;
+  const away = parseInt(awayEl.textContent) || 0;
+  predict(matchId, { winner, home, away });
 }
 
 function predict(matchId, pick) {
