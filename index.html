@@ -1877,6 +1877,7 @@ function renderPredict() {
 
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
+  const previewMode = new URLSearchParams(window.location.search).has('preview');
   const upcoming = getAllMatches().filter(m => !getResultForMatch(m) && !isMatchLocked(m));
   const grouped = {};
   upcoming.forEach(m => {
@@ -1917,7 +1918,6 @@ function renderPredict() {
         const userPick = getUserPrediction(currentUser, match);
         const isPredicted = !!userPick;
         const kickoffTime = getKickoffTime(match);
-        const previewMode = new URLSearchParams(window.location.search).has('preview');
         const canPredict = previewMode || (kickoffTime - now) <= twentyFourHours;
 
         html += `
