@@ -1917,7 +1917,8 @@ function renderPredict() {
         const userPick = getUserPrediction(currentUser, match);
         const isPredicted = !!userPick;
         const kickoffTime = getKickoffTime(match);
-        const canPredict = (kickoffTime - now) <= twentyFourHours;
+        const previewMode = new URLSearchParams(window.location.search).has('preview');
+        const canPredict = previewMode || (kickoffTime - now) <= twentyFourHours;
 
         html += `
           <div class="match-card ${isPredicted ? 'predicted' : ''}">
