@@ -1,7 +1,8 @@
 import json
+import os
 import urllib.request
 
-API_TOKEN = "49b916e7852b422187139132b9cb6ad7"
+API_TOKEN = os.environ.get("FOOTBALL_API_TOKEN", "49b916e7852b422187139132b9cb6ad7")
 FIREBASE_URL = "https://wc2026-predictor-56ab2-default-rtdb.firebaseio.com"
 
 TEAM_MAP = {

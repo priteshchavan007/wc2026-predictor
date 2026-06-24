@@ -497,6 +497,7 @@
       letter-spacing: 0.3px;
     }
 
+
     /* === LEADERBOARD === */
     .lb-item {
       display: flex; align-items: center; padding: 16px 18px;
@@ -778,34 +779,6 @@
       pointer-events: none;
     }
 
-    /* === NOTIFICATION BADGE === */
-    .notif-prompt {
-      background: var(--glass-bg);
-      backdrop-filter: blur(var(--glass-blur));
-      -webkit-backdrop-filter: blur(var(--glass-blur));
-      border: 1px solid var(--glass-border);
-      border-radius: 14px;
-      padding: 14px 18px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .notif-prompt span { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-    .notif-btn {
-      padding: 8px 16px;
-      border: 1px solid var(--teal);
-      border-radius: 20px;
-      background: rgba(0, 178, 169, 0.1);
-      color: var(--teal);
-      font-size: 11px; font-weight: 800;
-      cursor: pointer; font-family: inherit;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .notif-btn:hover { background: var(--teal); color: #fff; }
-
     /* === GROUP CARDS === */
     .group-card {
       background: var(--glass-bg);
@@ -957,6 +930,10 @@
           <span class="settings-icon">👥</span>
           <span>Manage Members</span>
         </div>
+        <div class="settings-item" id="notif-toggle" onclick="toggleNotifications()">
+          <span class="settings-icon">🔔</span>
+          <span id="notif-toggle-label">Notifications</span>
+        </div>
         <div class="settings-item" onclick="leaveGroup()" style="color:var(--red);">
           <span class="settings-icon">🚪</span>
           <span>Leave Group</span>
@@ -1078,8 +1055,9 @@ function requestNotifPermission() {
 function disableNotifications() {
   notificationsEnabled = false;
   localStorage.setItem('wc2026_notifs', 'false');
-  // Clear all scheduled timeouts
-  Object.values(scheduledNotifications).forEach(t => clearTimeout(t));
+  Object.values(scheduledNotifications).forEach(entry => {
+    if (entry && entry.timeout) clearTimeout(entry.timeout);
+  });
   scheduledNotifications = {};
   render();
 }
@@ -1090,10 +1068,43 @@ function dismissNotifPrompt() {
   if (prompt) prompt.remove();
 }
 
+function toggleNotifications() {
+  if (notificationsEnabled) {
+    disableNotifications();
+  } else {
+    requestNotifPermission();
+  }
+  updateNotifLabel();
+}
+
+function updateNotifLabel() {
+  const toggle = document.getElementById('notif-toggle');
+  if (!toggle) return;
+  if (!('Notification' in window) || Notification.permission === 'denied') {
+    toggle.style.display = 'none';
+    return;
+  }
+  toggle.style.display = '';
+  toggle.style.color = notificationsEnabled ? 'var(--green)' : '';
+  const label = document.getElementById('notif-toggle-label');
+  if (label) {
+    label.textContent = notificationsEnabled ? 'Notifications: On' : 'Notifications: Off';
+  }
+}
+
+function fireMatchNotification(match) {
+  if (!notificationsEnabled || Notification.permission !== 'granted') return;
+  new Notification('Match Starting Soon! ⚽', {
+    body: `${match.team1} vs ${match.team2} kicks off in 5 minutes! Make your prediction now.`,
+    tag: match.id
+  });
+}
+
 function scheduleUpcomingNotifications() {
   if (!notificationsEnabled) return;
-  // Clear existing schedules
-  Object.values(scheduledNotifications).forEach(t => clearTimeout(t));
+  Object.values(scheduledNotifications).forEach(entry => {
+    if (entry && entry.timeout) clearTimeout(entry.timeout);
+  });
   scheduledNotifications = {};
 
   const now = Date.now();
@@ -1105,15 +1116,36 @@ function scheduleUpcomingNotifications() {
     if (fiveMinBefore <= now) return;
 
     const delay = fiveMinBefore - now;
-    // Only schedule if within 24 hours (avoid memory issues)
     if (delay > 24 * 60 * 60 * 1000) return;
 
-    scheduledNotifications[match.id] = setTimeout(() => {
-      new Notification('Match Starting Soon! ⚽', {
-        body: `${match.team1} vs ${match.team2} kicks off in 5 minutes! Make your prediction now.`,
-        tag: match.id
-      });
-    }, delay);
+    scheduledNotifications[match.id] = {
+      timeout: setTimeout(() => {
+        fireMatchNotification(match);
+        delete scheduledNotifications[match.id];
+      }, delay),
+      targetTime: fiveMinBefore,
+      match: match
+    };
+  });
+}
+
+function recheckScheduledNotifications() {
+  if (!notificationsEnabled) return;
+  const now = Date.now();
+  Object.keys(scheduledNotifications).forEach(matchId => {
+    const entry = scheduledNotifications[matchId];
+    if (!entry) return;
+    clearTimeout(entry.timeout);
+    if (entry.targetTime <= now) {
+      fireMatchNotification(entry.match);
+      delete scheduledNotifications[matchId];
+    } else {
+      const newDelay = entry.targetTime - now;
+      scheduledNotifications[matchId].timeout = setTimeout(() => {
+        fireMatchNotification(entry.match);
+        delete scheduledNotifications[matchId];
+      }, newDelay);
+    }
   });
 }
 
@@ -1496,6 +1528,88 @@ function getPredScore(pred) {
   return null;
 }
 
+function getMatchPollCounts(matchId, match) {
+  const counts = {};
+  counts[match.team1] = 0;
+  counts['Draw'] = 0;
+  counts[match.team2] = 0;
+  let total = 0;
+  Object.keys(players).forEach(phone => {
+    const pred = getUserPrediction(phone, match);
+    if (!pred) return;
+    const winner = getPredWinner(pred);
+    if (!winner) return;
+    total++;
+    if (winner === 'Draw') {
+      counts['Draw']++;
+    } else if (normalizeTeamName(winner) === normalizeTeamName(match.team1)) {
+      counts[match.team1]++;
+    } else if (normalizeTeamName(winner) === normalizeTeamName(match.team2)) {
+      counts[match.team2]++;
+    }
+  });
+  return { counts, total };
+}
+
+function renderPollBars(matchId, match) {
+  const { counts, total } = getMatchPollCounts(matchId, match);
+  if (total === 0) return '';
+  return `<div style="text-align:center;margin-top:12px;padding:8px 0;">
+    <a href="javascript:void(0)" role="button" onclick="showVotesModal('${matchId}','${match.team1.replace(/'/g, "\\&#39;")}','${match.team2.replace(/'/g, "\\&#39;")}')" aria-label="View who voted for each option in ${match.team1} vs ${match.team2}" style="font-size:12px;color:var(--teal);font-weight:700;cursor:pointer;letter-spacing:0.3px;text-decoration:none;padding:8px 16px;-webkit-tap-highlight-color:transparent;">View Votes →</a>
+  </div>`;
+}
+
+function getPollButtonLabel(teamName, matchId, match) {
+  const { counts } = getMatchPollCounts(matchId, match);
+  const count = counts[teamName] || 0;
+  return count > 0 ? `${teamName} (${count})` : teamName;
+}
+
+function showVotesModal(matchId, team1, team2) {
+  const voters = { [team1]: [], 'Draw': [], [team2]: [] };
+  Object.keys(players).forEach(phone => {
+    const match = getAllMatches().find(m => m.id === matchId) || { id: matchId, team1, team2 };
+    const pred = getUserPrediction(phone, match);
+    if (!pred) return;
+    const winner = getPredWinner(pred);
+    if (!winner) return;
+    const name = players[phone].name || phone;
+    if (winner === 'Draw') {
+      voters['Draw'].push(name);
+    } else if (normalizeTeamName(winner) === normalizeTeamName(team1)) {
+      voters[team1].push(name);
+    } else if (normalizeTeamName(winner) === normalizeTeamName(team2)) {
+      voters[team2].push(name);
+    }
+  });
+
+  const total = voters[team1].length + voters['Draw'].length + voters[team2].length;
+  let html = `<div style="text-align:center;margin-bottom:20px;">
+    <div style="font-size:16px;font-weight:800;color:var(--text);">${team1} vs ${team2}</div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${total} vote${total !== 1 ? 's' : ''}</div>
+  </div>`;
+
+  [team1, 'Draw', team2].forEach(option => {
+    const names = voters[option];
+    const pct = total > 0 ? Math.round((names.length / total) * 100) : 0;
+    html += `<div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${option}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">${names.length} (${pct}%)</span>
+      </div>
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${pct}%;border-radius:3px;background:linear-gradient(90deg,var(--teal),var(--sky));transition:width 0.4s;"></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${names.length > 0 ? names.map(n => `<span style="font-size:11px;padding:4px 10px;border-radius:12px;background:rgba(0,178,169,0.12);color:var(--teal);font-weight:600;">${n}</span>`).join('') : '<span style="font-size:11px;color:var(--text-secondary);font-style:italic;">No votes</span>'}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('profile-content').innerHTML = html;
+  document.getElementById('profile-modal').style.display = 'flex';
+}
+
 // ========== FIREBASE LISTENERS ==========
 function detachListeners() {
   activeListeners.forEach(({ ref, type, cb }) => ref.off(type, cb));
@@ -1868,6 +1982,7 @@ function render() {
     renderLeaderboard();
     renderResults();
     renderAdmin();
+    updateNotifLabel();
   }, 50);
 }
 
@@ -1886,22 +2001,6 @@ function renderPredict() {
   });
 
   let html = '';
-
-  // Notification prompt or disable option
-  if (notificationsEnabled) {
-    html += `<div class="notif-prompt">
-      <span>🔔 Notifications on</span>
-      <button class="notif-btn" onclick="disableNotifications()" style="border-color:var(--red);color:var(--red);background:rgba(255,61,87,0.1);">Turn off</button>
-    </div>`;
-  } else if ('Notification' in window && Notification.permission !== 'denied' && localStorage.getItem('wc2026_notifs_dismissed') !== 'true') {
-    html += `<div class="notif-prompt">
-      <span>Get notified 5 min before kickoff</span>
-      <div style="display:flex;gap:6px;">
-        <button class="notif-btn" onclick="requestNotifPermission()">Enable</button>
-        <button class="notif-btn" onclick="dismissNotifPrompt()" style="border-color:var(--text-secondary);color:var(--text-secondary);background:transparent;">Dismiss</button>
-      </div>
-    </div>`;
-  }
 
   const dates = Object.keys(grouped).sort();
 
@@ -1958,17 +2057,19 @@ function renderPredict() {
                       </div>
                     </div>
                     <div class="predict-btns">
-                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
-                      <button class="predict-btn ${pw === 'Draw' ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','Draw')">Draw</button>
-                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
+                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${pw ? getPollButtonLabel(match.team1, match.id, match) : match.team1}</button>
+                      <button class="predict-btn ${pw === 'Draw' ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','Draw')">${pw ? getPollButtonLabel('Draw', match.id, match) : 'Draw'}</button>
+                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${pw ? getPollButtonLabel(match.team2, match.id, match) : match.team2}</button>
                     </div>
+                    ${userPick ? renderPollBars(match.id, match) : ''}
                     `;
                   })()
                 : `<div class="predict-btns">
-                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
-                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">Draw</button>
-                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${userPick ? getPollButtonLabel(match.team1, match.id, match) : match.team1}</button>
+                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">${userPick ? getPollButtonLabel('Draw', match.id, match) : 'Draw'}</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${userPick ? getPollButtonLabel(match.team2, match.id, match) : match.team2}</button>
                 </div>
+                ${userPick ? renderPollBars(match.id, match) : ''}
                 `
               : isPredicted
                 ? `<div class="prediction-status">✓ Predicted: ${typeof userPick === 'object' ? (userPick.winner + (userPick.home !== undefined ? ' (' + userPick.home + '-' + userPick.away + ')' : '')) : userPick}</div>`
@@ -2828,6 +2929,31 @@ db.ref('scores').on('value', snap => {
   Object.keys(fbScores).forEach(id => {
     liveScores[id] = fbScores[id];
   });
+});
+
+// ========== SILENT BACKGROUND REFRESH ==========
+let lastRefreshTime = Date.now();
+
+function silentRefresh() {
+  const now = Date.now();
+  if (now - lastRefreshTime < 5000) return;
+  lastRefreshTime = now;
+  firebase.database().goOnline();
+  fetchLiveScores();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    silentRefresh();
+    recheckScheduledNotifications();
+  }
+});
+
+window.addEventListener('focus', () => {
+  if (document.visibilityState === 'visible') {
+    silentRefresh();
+    recheckScheduledNotifications();
+  }
 });
 </script>
 </body>
