@@ -2653,6 +2653,9 @@ function renderAdmin() {
 // ========== ACTIONS ==========
 function handlePredict(event, matchId, pick) {
   const button = event.currentTarget;
+  const siblings = button.parentElement.querySelectorAll('.predict-btn');
+  siblings.forEach(b => b.classList.remove('selected'));
+  button.classList.add('selected');
   createRipple(event, button);
   createCelebration(button);
   predict(matchId, pick);
@@ -2663,6 +2666,10 @@ function handleScorePredict(matchId, winner) {
   const awayEl = document.getElementById('away_' + matchId);
   const home = homeEl ? parseInt(homeEl.textContent) : 0;
   const away = awayEl ? parseInt(awayEl.textContent) : 0;
+  const btns = homeEl.closest('.match-card').querySelectorAll('.predict-btn');
+  btns.forEach(b => {
+    b.classList.toggle('selected', b.textContent.trim() === winner || (winner === 'Draw' && b.textContent.trim() === 'Draw'));
+  });
   predict(matchId, { winner, home, away });
 }
 
