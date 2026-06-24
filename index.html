@@ -1446,8 +1446,10 @@ function getResultForMatch(match) {
 }
 
 function isScoreMode(matchId) {
-  if (matchId.startsWith('md3_')) return true;
-  if (matchId.startsWith('md')) return parseInt(matchId.split('_')[0].replace('md', '')) >= 3;
+  if (matchId.startsWith('md')) {
+    const mdNum = parseInt(matchId.split('_')[0].replace('md', ''));
+    return mdNum >= 4;
+  }
   if (matchId.startsWith('api_')) {
     const mdMatch = findMdMatchForApi(matchId);
     if (mdMatch) return isScoreMode(mdMatch.id);
@@ -1456,9 +1458,7 @@ function isScoreMode(matchId) {
 }
 
 function getStagePoints(matchId) {
-  if (matchId.startsWith('md3_')) return { winner: 2, goal: 1, exact: 1 };
   const mdNum = matchId.startsWith('md') ? parseInt(matchId.split('_')[0].replace('md', '')) : 0;
-  if (mdNum === 3) return { winner: 2, goal: 1, exact: 1 };
   if (mdNum === 4) return { winner: 4, goal: 2, exact: 2 }; // Round of 32
   if (mdNum === 5) return { winner: 6, goal: 3, exact: 3 }; // Round of 16
   if (mdNum === 6) return { winner: 8, goal: 4, exact: 4 }; // QF
@@ -2378,10 +2378,10 @@ function showRules() {
     <div style="margin-top:20px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);">Points System</div>
 
     <div style="margin-top:10px;font-size:12px;line-height:1.6;">
-      <div style="font-weight:700;color:var(--teal);margin-top:12px;">First 48 matches (each team plays their 1st & 2nd game)</div>
+      <div style="font-weight:700;color:var(--teal);margin-top:12px;">Group Stage (all 72 matches)</div>
       <div>✅ Correct winner/draw = <strong>2 pts</strong></div>
 
-      <div style="font-weight:700;color:var(--teal);margin-top:12px;">From 3rd group game onward — Score predictions unlock!</div>
+      <div style="font-weight:700;color:var(--teal);margin-top:12px;">From Round of 32 onward — Score predictions unlock!</div>
       <div>Now you also predict the scoreline. You earn points for <strong>each correct element</strong>:</div>
     </div>
 
@@ -2392,10 +2392,6 @@ function showRules() {
           <th style="padding:8px 4px;">Winner</th>
           <th style="padding:8px 4px;">Each team goals ⚽</th>
           <th style="padding:8px 4px;">Exact score 🎯</th>
-        </tr>
-        <tr style="border-bottom:1px solid var(--card-border);">
-          <td style="padding:7px 4px;text-align:left;font-weight:600;">3rd Group Game</td>
-          <td>2</td><td>1</td><td>+1</td>
         </tr>
         <tr style="border-bottom:1px solid var(--card-border);">
           <td style="padding:7px 4px;text-align:left;font-weight:600;">Round of 32</td>
