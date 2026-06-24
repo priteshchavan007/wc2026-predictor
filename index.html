@@ -1562,11 +1562,6 @@ function renderPollBars(matchId, match) {
   </div>`;
 }
 
-function getPollButtonLabel(teamName, matchId, match) {
-  const { counts } = getMatchPollCounts(matchId, match);
-  const count = counts[teamName] || 0;
-  return count > 0 ? `${teamName} (${count})` : teamName;
-}
 
 function showVotesModal(matchId, team1, team2) {
   const voters = { [team1]: [], 'Draw': [], [team2]: [] };
@@ -2060,17 +2055,17 @@ function renderPredict() {
                       </div>
                     </div>
                     <div class="predict-btns">
-                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${pw ? getPollButtonLabel(match.team1, match.id, match) : match.team1}</button>
-                      <button class="predict-btn ${pw === 'Draw' ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','Draw')">${pw ? getPollButtonLabel('Draw', match.id, match) : 'Draw'}</button>
-                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${pw ? getPollButtonLabel(match.team2, match.id, match) : match.team2}</button>
+                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
+                      <button class="predict-btn ${pw === 'Draw' ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','Draw')">Draw</button>
+                      <button class="predict-btn ${pw && normalizeTeamName(pw) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handleScorePredict('${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
                     </div>
                     ${userPick ? renderPollBars(match.id, match) : ''}
                     `;
                   })()
                 : `<div class="predict-btns">
-                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${userPick ? getPollButtonLabel(match.team1, match.id, match) : match.team1}</button>
-                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">${userPick ? getPollButtonLabel('Draw', match.id, match) : 'Draw'}</button>
-                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${userPick ? getPollButtonLabel(match.team2, match.id, match) : match.team2}</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team1) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team1.replace(/'/g, "\\&#39;")}')">${match.team1}</button>
+                  <button class="predict-btn ${userPick === 'Draw' ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','Draw')">Draw</button>
+                  <button class="predict-btn ${userPick && normalizeTeamName(userPick) === normalizeTeamName(match.team2) ? 'selected' : ''}" onclick="handlePredict(event,'${match.id}','${match.team2.replace(/'/g, "\\&#39;")}')">${match.team2}</button>
                 </div>
                 ${userPick ? renderPollBars(match.id, match) : ''}
                 `
