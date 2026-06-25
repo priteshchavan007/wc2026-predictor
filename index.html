@@ -1979,7 +1979,10 @@ function render() {
   clearTimeout(renderTimeout);
   renderTimeout = setTimeout(() => {
     try { renderPredict(); } catch(e) { console.error('renderPredict:', e); }
-    try { renderLeaderboard(); } catch(e) { console.error('renderLeaderboard:', e); }
+    try { renderLeaderboard(); } catch(e) {
+      console.error('renderLeaderboard:', e);
+      document.getElementById('tab-leaderboard').innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px;">Error: ' + e.message + '</div>';
+    }
     try { renderResults(); } catch(e) { console.error('renderResults:', e); }
     try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     updateNotifLabel();
