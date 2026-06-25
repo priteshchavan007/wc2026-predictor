@@ -2826,6 +2826,7 @@ const TEAM_NAME_MAP = {
 };
 
 function normalizeTeamName(name) {
+  if (!name) return '';
   const lower = name.toLowerCase();
   return TEAM_NAME_MAP[lower] || lower;
 }
