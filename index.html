@@ -1555,11 +1555,13 @@ function getMatchPollCounts(matchId, match) {
 }
 
 function renderPollBars(matchId, match) {
-  const { counts, total } = getMatchPollCounts(matchId, match);
-  if (total === 0) return '';
-  return `<div style="text-align:center;margin-top:12px;padding:8px 0;">
-    <a href="javascript:void(0)" role="button" onclick="showVotesModal('${matchId}','${match.team1.replace(/'/g, "\\&#39;")}','${match.team2.replace(/'/g, "\\&#39;")}')" aria-label="View who voted for each option in ${match.team1} vs ${match.team2}" style="font-size:12px;color:var(--teal);font-weight:700;cursor:pointer;letter-spacing:0.3px;text-decoration:none;padding:8px 16px;-webkit-tap-highlight-color:transparent;">View Votes →</a>
-  </div>`;
+  try {
+    const { counts, total } = getMatchPollCounts(matchId, match);
+    if (total === 0) return '';
+    return `<div style="text-align:center;margin-top:12px;padding:8px 0;">
+      <a href="javascript:void(0)" role="button" onclick="showVotesModal('${matchId}','${match.team1.replace(/'/g, "\\&#39;")}','${match.team2.replace(/'/g, "\\&#39;")}')" aria-label="View who voted for each option in ${match.team1} vs ${match.team2}" style="font-size:12px;color:var(--teal);font-weight:700;cursor:pointer;letter-spacing:0.3px;text-decoration:none;padding:8px 16px;-webkit-tap-highlight-color:transparent;">View Votes →</a>
+    </div>`;
+  } catch(e) { return ''; }
 }
 
 
@@ -1976,10 +1978,10 @@ function render() {
   if (!currentUser) return;
   clearTimeout(renderTimeout);
   renderTimeout = setTimeout(() => {
-    renderPredict();
-    renderLeaderboard();
-    renderResults();
-    renderAdmin();
+    try { renderPredict(); } catch(e) { console.error('renderPredict:', e); }
+    try { renderLeaderboard(); } catch(e) { console.error('renderLeaderboard:', e); }
+    try { renderResults(); } catch(e) { console.error('renderResults:', e); }
+    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     updateNotifLabel();
   }, 50);
 }
@@ -2666,10 +2668,12 @@ function handleScorePredict(matchId, winner) {
   const awayEl = document.getElementById('away_' + matchId);
   const home = homeEl ? parseInt(homeEl.textContent) : 0;
   const away = awayEl ? parseInt(awayEl.textContent) : 0;
-  const btns = homeEl.closest('.match-card').querySelectorAll('.predict-btn');
-  btns.forEach(b => {
-    b.classList.toggle('selected', b.textContent.trim() === winner || (winner === 'Draw' && b.textContent.trim() === 'Draw'));
-  });
+  const card = homeEl && homeEl.closest('.match-card');
+  if (card) {
+    card.querySelectorAll('.predict-btn').forEach(b => {
+      b.classList.toggle('selected', b.textContent.trim() === winner);
+    });
+  }
   predict(matchId, { winner, home, away });
 }
 
