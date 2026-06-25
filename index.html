@@ -1979,10 +1979,7 @@ function render() {
   clearTimeout(renderTimeout);
   renderTimeout = setTimeout(() => {
     try { renderPredict(); } catch(e) { console.error('renderPredict:', e); }
-    try { renderLeaderboard(); } catch(e) {
-      console.error('renderLeaderboard:', e);
-      document.getElementById('tab-leaderboard').innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px;">Error: ' + e.message + '</div>';
-    }
+    try { renderLeaderboard(); } catch(e) { console.error('renderLeaderboard:', e); }
     try { renderResults(); } catch(e) { console.error('renderResults:', e); }
     try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     updateNotifLabel();
@@ -2829,7 +2826,7 @@ const TEAM_NAME_MAP = {
 };
 
 function normalizeTeamName(name) {
-  if (!name) return '';
+  if (!name || typeof name !== 'string') return '';
   const lower = name.toLowerCase();
   return TEAM_NAME_MAP[lower] || lower;
 }
