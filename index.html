@@ -1469,13 +1469,14 @@ function getAllMatches() {
 }
 
 function getResultForMatch(match) {
-  if (results[match.id]) return results[match.id];
+  const r1 = results[match.id];
+  if (r1 && typeof r1 === 'string') return r1;
   if (match.id.startsWith('api_')) {
     const mdMatch = findMdMatchForApi(match.id);
-    if (mdMatch && results[mdMatch.id]) return results[mdMatch.id];
+    if (mdMatch) { const r = results[mdMatch.id]; if (r && typeof r === 'string') return r; }
   } else if (match.id.startsWith('md')) {
     const apiId = findApiIdForMd(match);
-    if (apiId && results[apiId]) return results[apiId];
+    if (apiId) { const r = results[apiId]; if (r && typeof r === 'string') return r; }
   }
   return null;
 }
@@ -1516,7 +1517,20 @@ function getUserPrediction(user, match) {
     const apiId = findApiIdForMd(match);
     if (apiId) pick = predictions[user + '_' + apiId];
   }
-  return pick || null;
+  if (pick) return pick;
+  // Fallback: scan prediction keys by team name for this user
+  const prefix = user + '_';
+  const t1 = normalizeTeamName(match.team1);
+  const t2 = normalizeTeamName(match.team2);
+  for (const key of Object.keys(predictions)) {
+    if (!key.startsWith(prefix)) continue;
+    const mId = key.slice(prefix.length);
+    const m = MATCHES.find(x => x.id === mId) || dynamicMatches.find(x => x.id === mId);
+    if (m && normalizeTeamName(m.team1) === t1 && normalizeTeamName(m.team2) === t2) {
+      return predictions[key];
+    }
+  }
+  return null;
 }
 
 function getPredWinner(pred) {
@@ -2135,13 +2149,14 @@ function calculateScores() {
 
     // Cross-check: find result under this ID or the alternate ID format
     let result = results[matchId];
-    if (!result) {
+    if (!result || typeof result !== 'string') {
+      result = null;
       if (matchId.startsWith('api_')) {
         const mdMatch = findMdMatchForApi(matchId);
-        if (mdMatch) result = results[mdMatch.id];
+        if (mdMatch) { const r = results[mdMatch.id]; if (r && typeof r === 'string') result = r; }
       } else if (matchId.startsWith('md')) {
         const apiId = findApiIdForMd(MATCHES.find(x => x.id === matchId));
-        if (apiId) result = results[apiId];
+        if (apiId) { const r = results[apiId]; if (r && typeof r === 'string') result = r; }
       }
     }
 
@@ -2172,10 +2187,26 @@ function calculateScores() {
   });
 
   // Calculate streaks (consecutive correct from most recent)
+  // First deduplicate decidedMatches by team names
+  const streakSeen = new Set();
+  const dedupedDecided = [];
+  decidedMatches.forEach(mId => {
+    let mt = null;
+    if (mId.startsWith('api_')) {
+      mt = getApiMatchTeams(mId);
+    } else {
+      const found = MATCHES.find(x => x.id === mId);
+      if (found) mt = { team1: found.team1, team2: found.team2 };
+    }
+    const dk = mt ? normalizeTeamName(mt.team1) + '|' + normalizeTeamName(mt.team2) : mId;
+    if (streakSeen.has(dk)) return;
+    streakSeen.add(dk);
+    dedupedDecided.push(mId);
+  });
   Object.keys(scores).forEach(playerKey => {
     let streak = 0;
-    for (let i = decidedMatches.length - 1; i >= 0; i--) {
-      const mId = decidedMatches[i];
+    for (let i = dedupedDecided.length - 1; i >= 0; i--) {
+      const mId = dedupedDecided[i];
       let pred = predictions[playerKey + '_' + mId];
       if (!pred) {
         if (mId.startsWith('api_')) {
@@ -2190,7 +2221,8 @@ function calculateScores() {
         }
       }
       const pw = getPredWinner(pred);
-      if (pw && (pw === results[mId] || normalizeTeamName(pw) === normalizeTeamName(results[mId]))) {
+      const res = typeof results[mId] === 'string' ? results[mId] : null;
+      if (pw && res && (pw === res || normalizeTeamName(pw) === normalizeTeamName(res))) {
         streak++;
       } else {
         break;
@@ -2326,7 +2358,7 @@ function showProfile(playerKey) {
   }
 
   function isPredCorrect(pred, result) {
-    if (!pred || !result) return false;
+    if (!pred || !result || typeof result !== 'string') return false;
     const pw = getPredWinner(pred);
     return pw === result || normalizeTeamName(pw || '') === normalizeTeamName(result);
   }
@@ -2349,7 +2381,12 @@ function showProfile(playerKey) {
   if (playerKey !== currentUser) {
     const myStats = scores[currentUser] || { points: 0, correct: 0, total: 0 };
     let myWins = 0, theirWins = 0, ties = 0;
+    const h2hSeen = new Set();
     decidedMatches.forEach(mId => {
+      const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
+      const dedupe = match ? normalizeTeamName(match.team1) + '_' + normalizeTeamName(match.team2) : mId;
+      if (h2hSeen.has(dedupe)) return;
+      h2hSeen.add(dedupe);
       const myPred = findPred(currentUser, mId);
       const theirPred = findPred(playerKey, mId);
       const result = results[mId];
@@ -2377,7 +2414,7 @@ function showProfile(playerKey) {
   decidedMatches.forEach(mId => {
     const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
-    const matchKey = match.team1 + '_' + match.team2;
+    const matchKey = normalizeTeamName(match.team1) + '_' + normalizeTeamName(match.team2);
     if (seenMatches.has(matchKey)) return;
     seenMatches.add(matchKey);
     uniqueDecided.push({ mId, match, kickoff: getKickoffTime(match) });
