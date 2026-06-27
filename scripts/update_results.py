@@ -82,14 +82,14 @@ HARDCODED = [
     ("md3_14", "Senegal", "Iraq"),
     ("md3_15", "Cape Verde", "Saudi Arabia"),
     ("md3_16", "Uruguay", "Spain"),
-    ("md3_17", "New Zealand", "Belgium"),
-    ("md3_18", "Egypt", "Iran"),
+    ("md3_17", "Egypt", "Iran"),
+    ("md3_18", "New Zealand", "Belgium"),
     ("md3_19", "Panama", "England"),
     ("md3_20", "Croatia", "Ghana"),
     ("md3_21", "Colombia", "Portugal"),
     ("md3_22", "DR Congo", "Uzbekistan"),
-    ("md3_23", "Jordan", "Argentina"),
-    ("md3_24", "Algeria", "Austria"),
+    ("md3_23", "Algeria", "Austria"),
+    ("md3_24", "Jordan", "Argentina"),
 ]
 
 

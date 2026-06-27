@@ -1668,7 +1668,7 @@ function initListeners() {
   });
   activeListeners.push({ ref: playRef, type: 'value', cb: playCb });
 
-  const rankRef = db.ref(groupPath + '/rankHistory');
+  const rankRef = db.ref(groupPath + '/rankPrevious');
   const rankCb = rankRef.on('value', snap => {
     previousRanks = snap.val() || {};
   });
@@ -2325,9 +2325,23 @@ function renderLeaderboard() {
 
   container.innerHTML = html;
 
-  // Store current ranks (admin only, updates comparison for other users)
-  if (isAdmin && currentGroup && Object.keys(currentRanks).length > 0) {
-    db.ref('groups/' + currentGroup + '/rankHistory').set(currentRanks);
+  // Store rank snapshot: save current ranks when result count changes
+  if (currentGroup && Object.keys(currentRanks).length > 0) {
+    const rankRef = db.ref('groups/' + currentGroup + '/rankHistory');
+    const countRef = db.ref('groups/' + currentGroup + '/rankResultCount');
+    countRef.once('value', snap => {
+      const savedCount = snap.val() || 0;
+      if (totalResults > savedCount) {
+        rankRef.once('value', rsnap => {
+          const oldRanks = rsnap.val();
+          if (oldRanks && Object.keys(oldRanks).length > 0) {
+            db.ref('groups/' + currentGroup + '/rankPrevious').set(oldRanks);
+          }
+          rankRef.set(currentRanks);
+          countRef.set(totalResults);
+        });
+      }
+    });
   }
 }
 
