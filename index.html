@@ -2116,9 +2116,8 @@ function calculateScores() {
   // Get match IDs sorted by date for streak calculation
   const decidedMatches = Object.keys(results);
 
-  // Deduplicate: track which player+match combos we've already scored
-  const scored = new Set();
-
+  // Build canonical prediction map: one entry per player+match (prefer api_ over md)
+  const canonicalPreds = {};
   Object.keys(predictions).forEach(key => {
     let playerKey = '';
     let matchId = '';
@@ -2134,7 +2133,6 @@ function calculateScores() {
     }
     if (!playerKey) return;
 
-    // Deduplicate by normalized match teams
     let matchTeams = null;
     if (matchId.startsWith('api_')) {
       matchTeams = getApiMatchTeams(matchId);
@@ -2145,9 +2143,15 @@ function calculateScores() {
     const dedupeKey = matchTeams
       ? playerKey + '|' + normalizeTeamName(matchTeams.team1) + '|' + normalizeTeamName(matchTeams.team2)
       : playerKey + '|' + matchId;
-    if (scored.has(dedupeKey)) return;
 
-    // Cross-check: find result under this ID or the alternate ID format
+    const existing = canonicalPreds[dedupeKey];
+    if (!existing || matchId.startsWith('api_')) {
+      canonicalPreds[dedupeKey] = { playerKey, matchId, key };
+    }
+  });
+
+  // Score each canonical prediction
+  Object.values(canonicalPreds).forEach(({ playerKey, matchId, key }) => {
     let result = results[matchId];
     if (!result || typeof result !== 'string') {
       result = null;
@@ -2161,7 +2165,6 @@ function calculateScores() {
     }
 
     if (result && scores[playerKey] !== undefined) {
-      scored.add(dedupeKey);
       scores[playerKey].total++;
       const pred = predictions[key];
       const predWinner = getPredWinner(pred);
@@ -2377,10 +2380,20 @@ function showProfile(playerKey) {
     return pw === result || normalizeTeamName(pw || '') === normalizeTeamName(result);
   }
 
-  // Calculate longest streak
+  // Calculate longest streak (deduplicated by team pair)
   const decidedMatches = Object.keys(results);
-  let longestStreak = 0, tempStreak = 0;
+  const streakSeenProfile = new Set();
+  const dedupedDecidedProfile = [];
   decidedMatches.forEach(mId => {
+    const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
+    if (!match) return;
+    const dk = normalizeTeamName(match.team1) + '|' + normalizeTeamName(match.team2);
+    if (streakSeenProfile.has(dk)) return;
+    streakSeenProfile.add(dk);
+    dedupedDecidedProfile.push(mId);
+  });
+  let longestStreak = 0, tempStreak = 0;
+  dedupedDecidedProfile.forEach(mId => {
     const pred = findPred(playerKey, mId);
     if (pred && isPredCorrect(pred, results[mId])) {
       tempStreak++;
@@ -2403,7 +2416,11 @@ function showProfile(playerKey) {
       h2hSeen.add(dedupe);
       const myPred = findPred(currentUser, mId);
       const theirPred = findPred(playerKey, mId);
-      const result = results[mId];
+      const match2 = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
+      let result = results[mId];
+      if (!result || typeof result !== 'string') {
+        if (match2) result = getResultForMatch(match2);
+      }
       const myCorrect = isPredCorrect(myPred, result);
       const theirCorrect = isPredCorrect(theirPred, result);
       if (myCorrect && !theirCorrect) myWins++;
@@ -2440,7 +2457,17 @@ function showProfile(playerKey) {
     const match = MATCHES.find(m => m.id === mId) || getAllMatches().find(m => m.id === mId);
     if (!match) return;
     const pred = findPred(playerKey, mId);
-    const correct = isPredCorrect(pred, results[mId]);
+    let mResult = results[mId];
+    if (!mResult || typeof mResult !== 'string') {
+      if (mId.startsWith('api_')) {
+        const mdM = findMdMatchForApi(mId);
+        if (mdM) mResult = results[mdM.id];
+      } else if (mId.startsWith('md')) {
+        const aId = findApiIdForMd(match);
+        if (aId) mResult = results[aId];
+      }
+    }
+    const correct = isPredCorrect(pred, mResult);
     const predDisplay = pred ? (getPredWinner(pred) + (getPredScore(pred) ? ' (' + getPredScore(pred).home + '-' + getPredScore(pred).away + ')' : '')) : '—';
     let matchPts = 0;
     if (pred && correct) {

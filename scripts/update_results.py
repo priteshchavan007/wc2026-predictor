@@ -119,6 +119,15 @@ def firebase_put(path, value):
         return False
 
 
+def firebase_get(path):
+    url = f"{FIREBASE_URL}/{path}.json"
+    try:
+        resp = urllib.request.urlopen(url)
+        return json.loads(resp.read())
+    except Exception:
+        return None
+
+
 def main():
     url = "https://api.football-data.org/v4/competitions/WC/matches"
     req = urllib.request.Request(url)
@@ -154,24 +163,22 @@ def main():
             hc_winner = "Draw"
             dyn_winner = "Draw"
 
-        # Write under hardcoded ID
-        if mid:
-            if firebase_put(f"results/{mid}", hc_winner):
-                updated += 1
-
-        # Write under api_ ID
-        if firebase_put(f"results/{api_id}", dyn_winner):
-            updated += 1
-
-        # Write score data
         ft = score.get("fullTime", {})
         score_data = {
             "homeScore": ft.get("home"),
             "awayScore": ft.get("away"),
             "status": m["status"],
         }
+
+        # Write under hardcoded ID
         if mid:
+            if firebase_put(f"results/{mid}", hc_winner):
+                updated += 1
             firebase_put(f"scores/{mid}", score_data)
+
+        # Write under api_ ID
+        if firebase_put(f"results/{api_id}", dyn_winner):
+            updated += 1
         firebase_put(f"scores/{api_id}", score_data)
 
     # Also write live/in-play matches
@@ -194,8 +201,41 @@ def main():
             firebase_put(f"scores/{mid}", score_data)
         firebase_put(f"scores/{api_id}", score_data)
 
+    # Verification: check that md and api results are consistent
+    fb_results = firebase_get("results") or {}
+    fb_scores = firebase_get("scores") or {}
+    inconsistencies = 0
+
+    for m in matches:
+        if m["status"] != "FINISHED":
+            continue
+        home = m["homeTeam"].get("shortName", "")
+        away = m["awayTeam"].get("shortName", "")
+        mid, t1, t2 = find_hardcoded(home, away)
+        api_id = f'api_{m["id"]}'
+
+        if mid:
+            md_result = fb_results.get(mid)
+            api_result = fb_results.get(api_id)
+            md_score = fb_scores.get(mid, {})
+            api_score = fb_scores.get(api_id, {})
+
+            if md_result and api_result:
+                if normalize(md_result or "") != normalize(api_result or ""):
+                    print(f"  WARN: result mismatch {mid}={md_result} vs {api_id}={api_result}")
+                    inconsistencies += 1
+            if md_score and api_score:
+                if md_score.get("homeScore") != api_score.get("homeScore") or \
+                   md_score.get("awayScore") != api_score.get("awayScore"):
+                    print(f"  WARN: score mismatch {mid}={md_score} vs {api_id}={api_score}")
+                    inconsistencies += 1
+
     finished = len([m for m in matches if m["status"] == "FINISHED"])
     print(f"Updated {updated} result entries for {finished} finished matches")
+    if inconsistencies:
+        print(f"  WARNING: {inconsistencies} inconsistencies detected!")
+    else:
+        print("  Verification passed: all md/api pairs consistent")
 
 
 if __name__ == "__main__":
