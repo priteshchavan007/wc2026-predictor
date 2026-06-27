@@ -2316,8 +2316,8 @@ function renderLeaderboard() {
 
       html += `
         <div class="lb-item">
-          <div class="rank">${actualRank}${arrow}</div>
-          <div class="lb-name" onclick="showProfile('${playerKey}')" style="cursor:pointer;">${stats.name}${you}${streakBadge}</div>
+          <div class="rank">${actualRank}</div>
+          <div class="lb-name" onclick="showProfile('${playerKey}')" style="cursor:pointer;">${stats.name}${you}${arrow}${streakBadge}</div>
           <div class="lb-stats">
             <div class="lb-pts ${pointsGained ? 'gained' : ''}">${stats.points} pts</div>
             <div class="lb-record">${stats.correct}/${stats.total} correct</div>
