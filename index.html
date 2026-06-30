@@ -1661,6 +1661,26 @@ function initListeners() {
   });
   activeListeners.push({ ref: scoresRef, type: 'value', cb: scoresCb });
 
+  const fixturesRef = db.ref('fixtures');
+  const fixturesCb = fixturesRef.on('value', snap => {
+    const fbFixtures = snap.val() || {};
+    const converted = [];
+    Object.entries(fbFixtures).forEach(([numId, f]) => {
+      const m = { id: parseInt(numId), homeTeam: { shortName: f.home }, awayTeam: { shortName: f.away }, utcDate: f.utcDate, stage: f.stage, group: null, status: f.status, score: { fullTime: { home: null, away: null }, winner: null } };
+      const local = apiMatchToLocal(m);
+      if (local) converted.push(local);
+    });
+    if (converted.length > 0 && dynamicMatches.length === 0) {
+      dynamicMatches = [...MATCHES, ...converted];
+      render();
+    } else if (converted.length > 0) {
+      const existingIds = new Set(dynamicMatches.map(m => m.id));
+      converted.forEach(m => { if (!existingIds.has(m.id)) dynamicMatches.push(m); });
+      render();
+    }
+  });
+  activeListeners.push({ ref: fixturesRef, type: 'value', cb: fixturesCb });
+
   const playRef = db.ref(groupPath + '/players');
   const playCb = playRef.on('value', snap => {
     players = snap.val() || {};

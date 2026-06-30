@@ -201,6 +201,27 @@ def main():
             firebase_put(f"scores/{mid}", score_data)
         firebase_put(f"scores/{api_id}", score_data)
 
+    # Write knockout fixtures to Firebase (so app works even if API call fails in browser)
+    fixtures = {}
+    for m in matches:
+        if m.get("stage") == "GROUP_STAGE":
+            continue
+        home = m["homeTeam"].get("shortName", "") or ""
+        away = m["awayTeam"].get("shortName", "") or ""
+        if not home or home == "None" or not away or away == "None":
+            continue
+        api_id = f'api_{m["id"]}'
+        fixtures[str(m["id"])] = {
+            "home": home,
+            "away": away,
+            "utcDate": m["utcDate"],
+            "stage": m.get("stage", ""),
+            "status": m["status"],
+        }
+    if fixtures:
+        firebase_put("fixtures", fixtures)
+        print(f"  Wrote {len(fixtures)} knockout fixtures to Firebase")
+
     # Verification: check that md and api results are consistent
     fb_results = firebase_get("results") or {}
     fb_scores = firebase_get("scores") or {}
