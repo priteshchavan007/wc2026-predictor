@@ -1481,6 +1481,14 @@ function getResultForMatch(match) {
   return null;
 }
 
+function getMatchStage(matchId) {
+  if (matchId.startsWith('api_')) {
+    const m = dynamicMatches.find(x => x.id === matchId);
+    if (m && m.stage) return m.stage;
+  }
+  return null;
+}
+
 function isScoreMode(matchId) {
   if (matchId.startsWith('md')) {
     const mdNum = parseInt(matchId.split('_')[0].replace('md', ''));
@@ -1489,9 +1497,20 @@ function isScoreMode(matchId) {
   if (matchId.startsWith('api_')) {
     const mdMatch = findMdMatchForApi(matchId);
     if (mdMatch) return isScoreMode(mdMatch.id);
+    const stage = getMatchStage(matchId);
+    if (stage && stage !== 'GROUP_STAGE') return true;
   }
   return false;
 }
+
+const STAGE_POINTS = {
+  'LAST_32': { winner: 4, goal: 2, exact: 2 },
+  'LAST_16': { winner: 6, goal: 3, exact: 3 },
+  'QUARTER_FINALS': { winner: 8, goal: 4, exact: 4 },
+  'SEMI_FINALS': { winner: 10, goal: 5, exact: 5 },
+  'THIRD_PLACE': { winner: 10, goal: 5, exact: 5 },
+  'FINAL': { winner: 12, goal: 6, exact: 6 },
+};
 
 function getStagePoints(matchId) {
   const mdNum = matchId.startsWith('md') ? parseInt(matchId.split('_')[0].replace('md', '')) : 0;
@@ -1503,6 +1522,8 @@ function getStagePoints(matchId) {
   if (matchId.startsWith('api_')) {
     const mdMatch = findMdMatchForApi(matchId);
     if (mdMatch) return getStagePoints(mdMatch.id);
+    const stage = getMatchStage(matchId);
+    if (stage && STAGE_POINTS[stage]) return STAGE_POINTS[stage];
   }
   return { winner: 2, goal: 0, exact: 0 };
 }
