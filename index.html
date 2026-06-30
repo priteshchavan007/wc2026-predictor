@@ -1592,42 +1592,46 @@ function renderPollBars(matchId, match) {
 
 
 function showVotesModal(matchId, team1, team2) {
+  const match = getAllMatches().find(m => m.id === matchId) || { id: matchId, team1, team2 };
+  const scoreMode = isScoreMode(matchId);
   const voters = { [team1]: [], 'Draw': [], [team2]: [] };
   Object.keys(players).forEach(phone => {
-    const match = getAllMatches().find(m => m.id === matchId) || { id: matchId, team1, team2 };
     const pred = getUserPrediction(phone, match);
     if (!pred) return;
     const winner = getPredWinner(pred);
     if (!winner) return;
     const name = players[phone].name || phone;
+    const score = getPredScore(pred);
+    const entry = { name, score };
     if (winner === 'Draw') {
-      voters['Draw'].push(name);
+      voters['Draw'].push(entry);
     } else if (normalizeTeamName(winner) === normalizeTeamName(team1)) {
-      voters[team1].push(name);
+      voters[team1].push(entry);
     } else if (normalizeTeamName(winner) === normalizeTeamName(team2)) {
-      voters[team2].push(name);
+      voters[team2].push(entry);
     }
   });
 
-  const total = voters[team1].length + voters['Draw'].length + voters[team2].length;
+  const options = scoreMode ? [team1, team2] : [team1, 'Draw', team2];
+  const total = options.reduce((s, o) => s + voters[o].length, 0);
   let html = `<div style="text-align:center;margin-bottom:20px;">
     <div style="font-size:16px;font-weight:800;color:var(--text);">${team1} vs ${team2}</div>
     <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${total} vote${total !== 1 ? 's' : ''}</div>
   </div>`;
 
-  [team1, 'Draw', team2].forEach(option => {
-    const names = voters[option];
-    const pct = total > 0 ? Math.round((names.length / total) * 100) : 0;
+  options.forEach(option => {
+    const entries = voters[option];
+    const pct = total > 0 ? Math.round((entries.length / total) * 100) : 0;
     html += `<div style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <span style="font-size:13px;font-weight:700;color:var(--text);">${option}</span>
-        <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">${names.length} (${pct}%)</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">${entries.length} (${pct}%)</span>
       </div>
       <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:8px;">
         <div style="height:100%;width:${pct}%;border-radius:3px;background:linear-gradient(90deg,var(--teal),var(--sky));transition:width 0.4s;"></div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        ${names.length > 0 ? names.map(n => `<span style="font-size:11px;padding:4px 10px;border-radius:12px;background:rgba(0,178,169,0.12);color:var(--teal);font-weight:600;">${n}</span>`).join('') : '<span style="font-size:11px;color:var(--text-secondary);font-style:italic;">No votes</span>'}
+        ${entries.length > 0 ? entries.map(e => `<span style="font-size:11px;padding:4px 10px;border-radius:12px;background:rgba(0,178,169,0.12);color:var(--teal);font-weight:600;">${e.name}${e.score ? ' <span style="color:var(--text-secondary);">(' + e.score.home + '-' + e.score.away + ')</span>' : ''}</span>`).join('') : '<span style="font-size:11px;color:var(--text-secondary);font-style:italic;">No votes</span>'}
       </div>
     </div>`;
   });
