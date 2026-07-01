@@ -163,7 +163,11 @@ def main():
             hc_winner = "Draw"
             dyn_winner = "Draw"
 
-        ft = score.get("fullTime", {})
+        is_knockout = m.get("stage") != "GROUP_STAGE"
+        if is_knockout and score.get("regularTime"):
+            ft = score.get("regularTime", {})
+        else:
+            ft = score.get("fullTime", {})
         score_data = {
             "homeScore": ft.get("home"),
             "awayScore": ft.get("away"),
@@ -191,7 +195,11 @@ def main():
             continue
         mid, t1, t2 = find_hardcoded(home, away)
         api_id = f'api_{m["id"]}'
-        ft = m["score"].get("fullTime", {})
+        is_knockout = m.get("stage") != "GROUP_STAGE"
+        if is_knockout and m["score"].get("regularTime"):
+            ft = m["score"].get("regularTime", {})
+        else:
+            ft = m["score"].get("fullTime", {})
         score_data = {
             "homeScore": ft.get("home"),
             "awayScore": ft.get("away"),

@@ -2868,10 +2868,12 @@ async function fetchLiveScores() {
 
       const score = m.score;
       const status = m.status;
+      const isKnockout = m.stage && m.stage !== 'GROUP_STAGE';
+      const ft = (isKnockout && score.regularTime) ? score.regularTime : score.fullTime;
       const scoreData = {
         status,
-        homeScore: score.fullTime.home,
-        awayScore: score.fullTime.away,
+        homeScore: ft.home,
+        awayScore: ft.away,
         winner: score.winner
       };
 
