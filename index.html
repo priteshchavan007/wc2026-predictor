@@ -1503,7 +1503,7 @@ function isScoreMode(matchId) {
   return false;
 }
 
-const KNOCKOUT_POINTS = { winner: 2, goal: 1, exact: 1 };
+const KNOCKOUT_POINTS = { winner: 2, goal: 0, exact: 3 };
 
 function getStagePoints(matchId) {
   if (matchId.startsWith('md')) {
@@ -2211,7 +2211,7 @@ function calculateScores() {
         scores[playerKey].correct++;
       }
 
-      if (predScore && stagePoints.goal > 0) {
+      if (predScore && (stagePoints.goal > 0 || stagePoints.exact > 0)) {
         const apiScore = getApiScore(MATCHES.find(x => x.id === matchId) || getAllMatches().find(x => x.id === matchId) || { id: matchId });
         if (apiScore && apiScore.homeScore !== null) {
           let goalPts = 0;
@@ -2509,7 +2509,7 @@ function showProfile(playerKey) {
       const sp = getStagePoints(mId);
       matchPts += sp.winner;
       const ps = getPredScore(pred);
-      if (ps && sp.goal > 0) {
+      if (ps && (sp.goal > 0 || sp.exact > 0)) {
         const as = getApiScore(match);
         if (as && as.homeScore !== null) {
           if (ps.home === as.homeScore) matchPts += sp.goal;
@@ -2520,7 +2520,7 @@ function showProfile(playerKey) {
     } else if (pred && !correct) {
       const ps = getPredScore(pred);
       const sp = getStagePoints(mId);
-      if (ps && sp.goal > 0) {
+      if (ps && (sp.goal > 0 || sp.exact > 0)) {
         const as = getApiScore(match);
         if (as && as.homeScore !== null) {
           if (ps.home === as.homeScore) matchPts += sp.goal;
@@ -2724,7 +2724,7 @@ function renderResults() {
             ptsEarned += stg.winner;
             breakdown = '+' + stg.winner + ' winner';
           }
-          if (predS && apiData2 && apiData2.homeScore !== null && stg.goal > 0) {
+          if (predS && apiData2 && apiData2.homeScore !== null && (stg.goal > 0 || stg.exact > 0)) {
             if (predS.home === apiData2.homeScore) { ptsEarned += stg.goal; breakdown += (breakdown ? ', ' : '') + '+' + stg.goal + ' home'; }
             if (predS.away === apiData2.awayScore) { ptsEarned += stg.goal; breakdown += (breakdown ? ', ' : '') + '+' + stg.goal + ' away'; }
             if (predS.home === apiData2.homeScore && predS.away === apiData2.awayScore) { ptsEarned += stg.exact; breakdown += (breakdown ? ', ' : '') + '+' + stg.exact + ' exact'; }
