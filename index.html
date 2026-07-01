@@ -1464,7 +1464,7 @@ let dynamicMatches = [];
 let groupInfo = null;
 let activeListeners = [];
 let basePoints = {};
-let scoringCutoff = null;
+let scoringCutoff = 'loading';
 
 function getAllMatches() {
   return dynamicMatches.length > 0 ? dynamicMatches : MATCHES;
@@ -1713,7 +1713,7 @@ function initListeners() {
   activeListeners.push({ ref: rankRef, type: 'value', cb: rankCb });
 
   db.ref('basePoints').once('value', snap => { basePoints = snap.val() || {}; render(); });
-  db.ref('scoringCutoff').once('value', snap => { scoringCutoff = snap.val() || null; render(); });
+  db.ref('scoringCutoff').once('value', snap => { scoringCutoff = snap.val() || '2026-07-01'; render(); });
 
   // Load group info
   db.ref(groupPath + '/info').once('value', snap => {
@@ -2147,9 +2147,10 @@ function renderPredict() {
 let previousRanks = {};
 
 function isMatchAfterCutoff(matchId) {
+  if (scoringCutoff === 'loading') return false;
   if (!scoringCutoff) return true;
   const match = MATCHES.find(m => m.id === matchId) || getAllMatches().find(m => m.id === matchId);
-  if (!match) return true;
+  if (!match) return false;
   return match.date >= scoringCutoff;
 }
 
