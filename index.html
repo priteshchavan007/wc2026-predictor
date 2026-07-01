@@ -1463,6 +1463,8 @@ let players = {};
 let dynamicMatches = [];
 let groupInfo = null;
 let activeListeners = [];
+let basePoints = {};
+let scoringCutoff = null;
 
 function getAllMatches() {
   return dynamicMatches.length > 0 ? dynamicMatches : MATCHES;
@@ -1709,6 +1711,9 @@ function initListeners() {
     previousRanks = snap.val() || {};
   });
   activeListeners.push({ ref: rankRef, type: 'value', cb: rankCb });
+
+  db.ref('basePoints').once('value', snap => { basePoints = snap.val() || {}; render(); });
+  db.ref('scoringCutoff').once('value', snap => { scoringCutoff = snap.val() || null; render(); });
 
   // Load group info
   db.ref(groupPath + '/info').once('value', snap => {
@@ -2141,11 +2146,19 @@ function renderPredict() {
 
 let previousRanks = {};
 
+function isMatchAfterCutoff(matchId) {
+  if (!scoringCutoff) return true;
+  const match = MATCHES.find(m => m.id === matchId) || getAllMatches().find(m => m.id === matchId);
+  if (!match) return true;
+  return match.date >= scoringCutoff;
+}
+
 function calculateScores() {
   const scores = {};
   Object.keys(players).forEach(key => {
     const name = players[key].name || key;
-    scores[key] = { points: 0, correct: 0, total: 0, name: name, streak: 0 };
+    const bp = basePoints[key] || 0;
+    scores[key] = { points: bp, correct: 0, total: 0, name: name, streak: 0 };
   });
 
   // Get match IDs sorted by date for streak calculation
@@ -2199,7 +2212,7 @@ function calculateScores() {
       }
     }
 
-    if (result && scores[playerKey] !== undefined) {
+    if (result && scores[playerKey] !== undefined && isMatchAfterCutoff(matchId)) {
       scores[playerKey].total++;
       const pred = predictions[key];
       const predWinner = getPredWinner(pred);
