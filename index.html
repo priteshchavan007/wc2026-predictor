@@ -2731,17 +2731,17 @@ function renderResults() {
           const predS = getPredScore(userPick);
           const stg = getStagePoints(match.id);
           const apiData2 = getApiScore(match);
-          let ptsEarned = 0;
-          let breakdown = '';
+          let winPts = 0, scorePts = 0;
           if (predW && (predW === winner || normalizeTeamName(predW) === normalizeTeamName(winner))) {
-            ptsEarned += stg.winner;
-            breakdown = '+' + stg.winner + ' winner';
+            winPts = stg.winner;
           }
           if (predS && apiData2 && apiData2.homeScore !== null && (stg.goal > 0 || stg.exact > 0)) {
-            if (predS.home === apiData2.homeScore) { ptsEarned += stg.goal; breakdown += (breakdown ? ', ' : '') + '+' + stg.goal + ' home'; }
-            if (predS.away === apiData2.awayScore) { ptsEarned += stg.goal; breakdown += (breakdown ? ', ' : '') + '+' + stg.goal + ' away'; }
-            if (predS.home === apiData2.homeScore && predS.away === apiData2.awayScore) { ptsEarned += stg.exact; breakdown += (breakdown ? ', ' : '') + '+' + stg.exact + ' exact'; }
+            if (predS.home === apiData2.homeScore) scorePts += stg.goal;
+            if (predS.away === apiData2.awayScore) scorePts += stg.goal;
+            if (predS.home === apiData2.homeScore && predS.away === apiData2.awayScore) scorePts += stg.exact;
           }
+          const ptsEarned = winPts + scorePts;
+          const breakdown = [winPts ? winPts + ' Win' : '', scorePts ? scorePts + ' Score' : ''].filter(Boolean).join(', ');
           const pickDisplay = predW ? (predW + (predS ? ' (' + predS.home + '-' + predS.away + ')' : '')) : (userPick || '—');
           return `<div class="result-bottom" style="margin-top:10px;padding-top:10px;">
             <span>Your pick: <strong>${pickDisplay}</strong></span>
