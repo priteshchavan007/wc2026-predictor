@@ -6,33 +6,41 @@
 <title>Enter Predictions</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; padding: 12px; max-width: 500px; margin: 0 auto; }
+body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; padding: 12px; max-width: 520px; margin: 0 auto; }
 h1 { font-size: 18px; margin-bottom: 12px; text-align: center; }
 .match-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .match-btn { padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #aaa; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .match-btn.active { background: #00b2a9; border-color: #00b2a9; color: #fff; font-weight: 700; }
 .match-btn.done { border-color: #4caf50; color: #4caf50; }
-.match-title { font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 12px; color: #4facfe; }
-.grid { display: flex; flex-direction: column; gap: 6px; }
-.row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px; }
+.match-title { font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 4px; color: #4facfe; }
+.match-subtitle { font-size: 11px; text-align: center; margin-bottom: 12px; color: #666; }
+.grid { display: flex; flex-direction: column; gap: 4px; }
+.row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px; transition: border-color 0.2s; }
 .row.saved { border-left: 3px solid #4caf50; }
-.pname { width: 70px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-.team-toggle { display: flex; gap: 0; flex-shrink: 0; }
-.team-toggle button { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #ccc; font-size: 11px; font-weight: 600; cursor: pointer; }
-.team-toggle button:first-child { border-radius: 6px 0 0 6px; }
-.team-toggle button:last-child { border-radius: 0 6px 6px 0; }
-.team-toggle button.sel { background: #00b2a9; border-color: #00b2a9; color: #fff; }
-.scores { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.scores input { width: 32px; padding: 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; font-size: 13px; text-align: center; font-weight: 700; }
-.scores span { color: #666; font-size: 11px; }
-.status { width: 20px; text-align: center; font-size: 14px; flex-shrink: 0; }
+.row.active-row { background: rgba(79,172,254,0.08); }
+.pname { width: 62px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.score-input { display: flex; align-items: center; gap: 3px; }
+.score-input input { width: 34px; padding: 6px 2px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; font-size: 14px; text-align: center; font-weight: 700; }
+.score-input input:focus { border-color: #4facfe; outline: none; background: rgba(79,172,254,0.12); }
+.score-input .sep { color: #666; font-size: 12px; font-weight: 700; }
+.winner-indicator { width: 50px; font-size: 10px; font-weight: 700; text-align: center; border-radius: 4px; padding: 3px 4px; flex-shrink: 0; }
+.winner-indicator.home { background: rgba(76,175,80,0.2); color: #4caf50; }
+.winner-indicator.away { background: rgba(76,175,80,0.2); color: #4caf50; }
+.winner-indicator.tied { background: rgba(255,152,0,0.2); color: #ff9800; }
+.team-override { display: flex; gap: 0; flex-shrink: 0; }
+.team-override button { padding: 5px 8px; border: 1px solid rgba(255,255,255,0.12); background: transparent; color: #666; font-size: 10px; cursor: pointer; transition: all 0.15s; }
+.team-override button:first-child { border-radius: 5px 0 0 5px; }
+.team-override button:last-child { border-radius: 0 5px 5px 0; }
+.team-override button.sel { background: #00b2a9; border-color: #00b2a9; color: #fff; font-weight: 700; }
+.status { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
 .save-all { position: sticky; bottom: 12px; width: 100%; padding: 14px; border-radius: 10px; border: none; background: linear-gradient(135deg, #00b2a9, #4facfe); color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 12px; box-shadow: 0 4px 20px rgba(0,178,169,0.4); }
 .save-all:active { transform: scale(0.98); }
 .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; display: none; z-index: 99; }
-.nav-btns { display: flex; gap: 8px; margin-top: 12px; }
-.nav-btns button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
-.nav-btns button:disabled { opacity: 0.3; }
 .counter { text-align: center; font-size: 11px; color: #666; margin-top: 8px; }
+.quick-actions { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.quick-actions button { padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #aaa; font-size: 10px; cursor: pointer; }
+.quick-actions button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.hint { text-align: center; font-size: 10px; color: #555; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -40,6 +48,9 @@ h1 { font-size: 18px; margin-bottom: 12px; text-align: center; }
 <h1>Quick Predictions Entry</h1>
 <div class="match-selector" id="match-tabs"></div>
 <div class="match-title" id="match-title"></div>
+<div class="match-subtitle" id="match-subtitle"></div>
+<div class="quick-actions" id="quick-actions"></div>
+<div class="hint">Tab/Enter moves to next input. Winner auto-detected from scores. Click team to override for draws.</div>
 <div class="grid" id="grid"></div>
 <button class="save-all" id="save-btn" onclick="saveAll()">Save & Next Match →</button>
 <div class="counter" id="counter"></div>
@@ -93,7 +104,7 @@ let savedMatches = new Set();
 
 function init() {
   renderTabs();
-  loadMatch(0);
+  loadMatch(4); // Start at Ivory Coast vs Norway
 }
 
 function renderTabs() {
@@ -107,58 +118,171 @@ function loadMatch(idx) {
   currentIdx = idx;
   const m = MATCHES[idx];
   renderTabs();
-  document.getElementById('match-title').textContent = `${m.home} vs ${m.away} (${m.date})`;
+  document.getElementById('match-title').textContent = `${m.home} vs ${m.away}`;
+  document.getElementById('match-subtitle').textContent = m.date;
+
+  // Quick-fill buttons
+  document.getElementById('quick-actions').innerHTML = `
+    <button onclick="fillAll('${m.home}', 2, 0)">All ${m.h} 2-0</button>
+    <button onclick="fillAll('${m.home}', 1, 0)">All ${m.h} 1-0</button>
+    <button onclick="fillAll('${m.away}', 0, 1)">All ${m.a} 0-1</button>
+    <button onclick="fillEmpty('${m.home}', 1, 0)">Fill empty ${m.h} 1-0</button>
+  `;
 
   let html = '';
-  PLAYERS.forEach(p => {
-    html += `<div class="row" id="row_${p.id}">
+  PLAYERS.forEach((p, i) => {
+    html += `<div class="row" id="row_${p.id}" data-idx="${i}">
       <div class="pname">${p.name}</div>
-      <div class="team-toggle">
-        <button id="th_${p.id}" onclick="pick('${p.id}','${m.home}')">${m.h}</button>
-        <button id="ta_${p.id}" onclick="pick('${p.id}','${m.away}')">${m.a}</button>
+      <div class="score-input">
+        <input type="number" id="sh_${p.id}" min="0" max="9" inputmode="numeric"
+          onfocus="this.select(); highlightRow('${p.id}')"
+          oninput="autoDetectWinner('${p.id}'); autoAdvance(this, 'sa_${p.id}')"
+          onkeydown="handleKey(event, '${p.id}', 'h')">
+        <span class="sep">:</span>
+        <input type="number" id="sa_${p.id}" min="0" max="9" inputmode="numeric"
+          onfocus="this.select(); highlightRow('${p.id}')"
+          oninput="autoDetectWinner('${p.id}'); autoAdvanceNext(this, ${i})"
+          onkeydown="handleKey(event, '${p.id}', 'a')">
       </div>
-      <div class="scores">
-        <input type="number" id="sh_${p.id}" min="0" inputmode="numeric" onfocus="this.select()">
-        <span>:</span>
-        <input type="number" id="sa_${p.id}" min="0" inputmode="numeric" onfocus="this.select()">
+      <div class="winner-indicator" id="wi_${p.id}"></div>
+      <div class="team-override">
+        <button id="th_${p.id}" onclick="forceWinner('${p.id}','${m.home}')">${m.h}</button>
+        <button id="ta_${p.id}" onclick="forceWinner('${p.id}','${m.away}')">${m.a}</button>
       </div>
       <div class="status" id="st_${p.id}"></div>
     </div>`;
   });
   document.getElementById('grid').innerHTML = html;
-  document.getElementById('save-btn').textContent = idx < MATCHES.length - 1 ? 'Save & Next Match →' : 'Save All ✓';
+  document.getElementById('save-btn').textContent = idx < MATCHES.length - 1 ? 'Save & Next →' : 'Save ✓';
   updateCounter();
 
-  // Load existing
+  // Load existing predictions
   PLAYERS.forEach(p => {
     db.ref('groups/default/predictions/' + p.id + '_' + m.id).once('value', snap => {
       const v = snap.val();
       if (!v) return;
-      if (v.winner) {
-        pick(p.id, v.winner, true);
-      }
       if (v.home !== undefined) document.getElementById('sh_' + p.id).value = v.home;
       if (v.away !== undefined) document.getElementById('sa_' + p.id).value = v.away;
+      if (v.winner) {
+        document.getElementById('row_' + p.id).dataset.winner = v.winner;
+        updateWinnerDisplay(p.id, v.winner);
+      }
       document.getElementById('row_' + p.id).classList.add('saved');
       document.getElementById('st_' + p.id).textContent = '✓';
     });
   });
+
+  // Focus first input after a beat
+  setTimeout(() => document.getElementById('sh_' + PLAYERS[0].id).focus(), 100);
 }
 
-function pick(pid, team, silent) {
+function autoDetectWinner(pid) {
   const m = MATCHES[currentIdx];
+  const h = parseInt(document.getElementById('sh_' + pid).value);
+  const a = parseInt(document.getElementById('sa_' + pid).value);
+  const row = document.getElementById('row_' + pid);
+
+  if (isNaN(h) || isNaN(a)) {
+    row.dataset.winner = '';
+    updateWinnerDisplay(pid, '');
+    return;
+  }
+
+  let winner;
+  if (h > a) winner = m.home;
+  else if (a > h) winner = m.away;
+  else winner = row.dataset.winner || ''; // Keep manual override for draws
+
+  row.dataset.winner = winner;
+  updateWinnerDisplay(pid, winner);
+  updateCounter();
+}
+
+function forceWinner(pid, team) {
+  const m = MATCHES[currentIdx];
+  document.getElementById('row_' + pid).dataset.winner = team;
+  updateWinnerDisplay(pid, team);
+  updateCounter();
+}
+
+function updateWinnerDisplay(pid, winner) {
+  const m = MATCHES[currentIdx];
+  const el = document.getElementById('wi_' + pid);
   const hBtn = document.getElementById('th_' + pid);
   const aBtn = document.getElementById('ta_' + pid);
-  hBtn.classList.toggle('sel', team === m.home);
-  aBtn.classList.toggle('sel', team === m.away);
-  hBtn.dataset.winner = team === m.home ? team : '';
-  aBtn.dataset.winner = team === m.away ? team : '';
-  // Store winner on row
-  document.getElementById('row_' + pid).dataset.winner = team;
-  if (!silent) {
-    // Auto-focus the home score input
-    document.getElementById('sh_' + pid).focus();
+
+  hBtn.classList.toggle('sel', winner === m.home);
+  aBtn.classList.toggle('sel', winner === m.away);
+
+  if (winner === m.home) {
+    el.textContent = m.h;
+    el.className = 'winner-indicator home';
+  } else if (winner === m.away) {
+    el.textContent = m.a;
+    el.className = 'winner-indicator away';
+  } else if (winner) {
+    el.textContent = '???';
+    el.className = 'winner-indicator tied';
+  } else {
+    el.textContent = '';
+    el.className = 'winner-indicator';
   }
+}
+
+function highlightRow(pid) {
+  document.querySelectorAll('.row').forEach(r => r.classList.remove('active-row'));
+  document.getElementById('row_' + pid).classList.add('active-row');
+}
+
+function autoAdvance(input, nextId) {
+  if (input.value.length >= 1) {
+    setTimeout(() => document.getElementById(nextId).focus(), 50);
+  }
+}
+
+function autoAdvanceNext(input, playerIdx) {
+  if (input.value.length >= 1 && playerIdx < PLAYERS.length - 1) {
+    setTimeout(() => {
+      document.getElementById('sh_' + PLAYERS[playerIdx + 1].id).focus();
+    }, 50);
+  }
+}
+
+function handleKey(e, pid, which) {
+  if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault();
+    const pIdx = PLAYERS.findIndex(p => p.id === pid);
+    if (which === 'h') {
+      document.getElementById('sa_' + pid).focus();
+    } else if (pIdx < PLAYERS.length - 1) {
+      document.getElementById('sh_' + PLAYERS[pIdx + 1].id).focus();
+    } else {
+      saveAll();
+    }
+  }
+}
+
+function fillAll(winner, homeScore, awayScore) {
+  PLAYERS.forEach(p => {
+    document.getElementById('sh_' + p.id).value = homeScore;
+    document.getElementById('sa_' + p.id).value = awayScore;
+    document.getElementById('row_' + p.id).dataset.winner = winner;
+    updateWinnerDisplay(p.id, winner);
+  });
+  updateCounter();
+}
+
+function fillEmpty(winner, homeScore, awayScore) {
+  PLAYERS.forEach(p => {
+    const h = document.getElementById('sh_' + p.id).value;
+    const a = document.getElementById('sa_' + p.id).value;
+    if (h === '' && a === '') {
+      document.getElementById('sh_' + p.id).value = homeScore;
+      document.getElementById('sa_' + p.id).value = awayScore;
+      document.getElementById('row_' + p.id).dataset.winner = winner;
+      updateWinnerDisplay(p.id, winner);
+    }
+  });
   updateCounter();
 }
 
@@ -169,11 +293,11 @@ function saveAll() {
   PLAYERS.forEach(p => {
     const row = document.getElementById('row_' + p.id);
     const winner = row.dataset.winner;
-    if (!winner) return;
     const h = document.getElementById('sh_' + p.id).value;
     const a = document.getElementById('sa_' + p.id).value;
+    if (!winner && h === '' && a === '') return;
     updates['groups/default/predictions/' + p.id + '_' + m.id] = {
-      winner,
+      winner: winner || m.home,
       home: parseInt(h) || 0,
       away: parseInt(a) || 0
     };
@@ -185,9 +309,8 @@ function saveAll() {
     toast(`Saved ${count} predictions!`);
     savedMatches.add(currentIdx);
     renderTabs();
-    // Auto-advance to next match
     if (currentIdx < MATCHES.length - 1) {
-      setTimeout(() => loadMatch(currentIdx + 1), 600);
+      setTimeout(() => loadMatch(currentIdx + 1), 500);
     }
   });
 }
