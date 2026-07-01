@@ -3,77 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Enter Predictions</title>
+<title>Enter Predictions</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; padding: 20px; max-width: 600px; margin: 0 auto; }
-h1 { font-size: 20px; margin-bottom: 20px; text-align: center; }
-.section { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-label { display: block; font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-select, input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: #fff; font-size: 14px; margin-bottom: 12px; }
-select option { background: #1a1a2e; }
-.score-row { display: flex; gap: 12px; align-items: center; }
-.score-row input { width: 60px; text-align: center; }
-.score-row span { font-size: 14px; font-weight: 700; }
-.winner-btns { display: flex; gap: 8px; margin-bottom: 12px; }
-.winner-btns button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
-.winner-btns button.selected { background: #00b2a9; border-color: #00b2a9; }
-.save-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; background: linear-gradient(135deg, #00b2a9, #4facfe); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-.save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00b2a9; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; display: none; }
-.history { margin-top: 20px; }
-.history-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #aaa; }
-.bulk-section { margin-top: 20px; }
-.match-header { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #4facfe; }
-.player-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
-.player-row .name { width: 90px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
-.player-row select { width: 100px; margin: 0; padding: 6px; font-size: 12px; }
-.player-row input { width: 40px; margin: 0; padding: 6px; font-size: 12px; text-align: center; }
-.player-row span { font-size: 12px; }
-.save-match-btn { padding: 8px 16px; border-radius: 8px; border: none; background: #00b2a9; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 8px; }
-.tab-btns { display: flex; gap: 8px; margin-bottom: 16px; }
-.tab-btns button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: #fff; font-size: 13px; cursor: pointer; }
-.tab-btns button.active { background: #00b2a9; border-color: #00b2a9; }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; padding: 12px; max-width: 500px; margin: 0 auto; }
+h1 { font-size: 18px; margin-bottom: 12px; text-align: center; }
+.match-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.match-btn { padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #aaa; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.match-btn.active { background: #00b2a9; border-color: #00b2a9; color: #fff; font-weight: 700; }
+.match-btn.done { border-color: #4caf50; color: #4caf50; }
+.match-title { font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 12px; color: #4facfe; }
+.grid { display: flex; flex-direction: column; gap: 6px; }
+.row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px; }
+.row.saved { border-left: 3px solid #4caf50; }
+.pname { width: 70px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.team-toggle { display: flex; gap: 0; flex-shrink: 0; }
+.team-toggle button { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #ccc; font-size: 11px; font-weight: 600; cursor: pointer; }
+.team-toggle button:first-child { border-radius: 6px 0 0 6px; }
+.team-toggle button:last-child { border-radius: 0 6px 6px 0; }
+.team-toggle button.sel { background: #00b2a9; border-color: #00b2a9; color: #fff; }
+.scores { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.scores input { width: 32px; padding: 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; font-size: 13px; text-align: center; font-weight: 700; }
+.scores span { color: #666; font-size: 11px; }
+.status { width: 20px; text-align: center; font-size: 14px; flex-shrink: 0; }
+.save-all { position: sticky; bottom: 12px; width: 100%; padding: 14px; border-radius: 10px; border: none; background: linear-gradient(135deg, #00b2a9, #4facfe); color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 12px; box-shadow: 0 4px 20px rgba(0,178,169,0.4); }
+.save-all:active { transform: scale(0.98); }
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; display: none; z-index: 99; }
+.nav-btns { display: flex; gap: 8px; margin-top: 12px; }
+.nav-btns button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.nav-btns button:disabled { opacity: 0.3; }
+.counter { text-align: center; font-size: 11px; color: #666; margin-top: 8px; }
 </style>
 </head>
 <body>
 
-<h1>Enter WhatsApp Predictions</h1>
-
-<div class="tab-btns">
-  <button class="active" onclick="switchTab('bulk')">By Match</button>
-  <button onclick="switchTab('single')">One by One</button>
-</div>
-
-<div id="tab-bulk" class="tab-content active">
-  <div class="section">
-    <label>Select Match</label>
-    <select id="bulk-match" onchange="renderBulkMatch()"></select>
-  </div>
-  <div id="bulk-grid"></div>
-</div>
-
-<div id="tab-single" class="tab-content">
-  <div class="section">
-    <label>Player</label>
-    <select id="player"></select>
-    <label>Match</label>
-    <select id="match" onchange="updateWinnerBtns()"></select>
-    <label>Winner Prediction</label>
-    <div class="winner-btns" id="winner-btns"></div>
-    <label>Score Prediction (90 mins)</label>
-    <div class="score-row">
-      <input type="number" id="home-score" min="0" value="0">
-      <span>-</span>
-      <input type="number" id="away-score" min="0" value="0">
-    </div>
-    <button class="save-btn" onclick="saveSingle()">Save Prediction</button>
-  </div>
-</div>
-
-<div class="toast" id="toast">Saved!</div>
+<h1>Quick Predictions Entry</h1>
+<div class="match-selector" id="match-tabs"></div>
+<div class="match-title" id="match-title"></div>
+<div class="grid" id="grid"></div>
+<button class="save-all" id="save-btn" onclick="saveAll()">Save & Next Match →</button>
+<div class="counter" id="counter"></div>
+<div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -87,7 +57,7 @@ const PLAYERS = [
   { id: '9100787232', name: 'Vidhi' },
   { id: '9916753799', name: 'Shweta' },
   { id: '8097296438', name: 'Pritesh' },
-  { id: '8968834670', name: 'Germanjit' },
+  { id: '8968834670', name: 'German.' },
   { id: '9836657468', name: 'Nirjhar' },
   { id: '9834159538', name: 'Pushkin' },
   { id: '7507057136', name: 'Hemant' },
@@ -96,146 +66,142 @@ const PLAYERS = [
   { id: '8582609793', name: 'Aditi' },
   { id: '9553760642', name: 'Anurag' },
   { id: '9989601611', name: 'Majji' },
-  { id: '8826032950', name: 'Deepshika' },
+  { id: '8826032950', name: 'Deep.' },
 ];
 
-const R32_MATCHES = [
-  { id: 'api_537417', home: 'South Africa', away: 'Canada', date: 'Jun 28' },
-  { id: 'api_537423', home: 'Brazil', away: 'Japan', date: 'Jun 29' },
-  { id: 'api_537415', home: 'Germany', away: 'Paraguay', date: 'Jun 29' },
-  { id: 'api_537418', home: 'Netherlands', away: 'Morocco', date: 'Jun 30' },
-  { id: 'api_537424', home: 'Ivory Coast', away: 'Norway', date: 'Jun 30' },
-  { id: 'api_537416', home: 'France', away: 'Sweden', date: 'Jul 1' },
-  { id: 'api_537425', home: 'Mexico', away: 'Ecuador', date: 'Jul 1' },
-  { id: 'api_537426', home: 'England', away: 'Congo DR', date: 'Jul 1' },
-  { id: 'api_537422', home: 'Belgium', away: 'Senegal', date: 'Jul 2' },
-  { id: 'api_537421', home: 'USA', away: 'Bosnia-H.', date: 'Jul 2' },
-  { id: 'api_537420', home: 'Spain', away: 'Austria', date: 'Jul 2' },
-  { id: 'api_537419', home: 'Portugal', away: 'Croatia', date: 'Jul 3' },
-  { id: 'api_537429', home: 'Switzerland', away: 'Algeria', date: 'Jul 3' },
-  { id: 'api_537428', home: 'Australia', away: 'Egypt', date: 'Jul 3' },
-  { id: 'api_537427', home: 'Argentina', away: 'Cape Verde', date: 'Jul 3' },
-  { id: 'api_537430', home: 'Colombia', away: 'Ghana', date: 'Jul 4' },
+const MATCHES = [
+  { id: 'api_537417', home: 'South Africa', away: 'Canada', date: 'Jun 28', h: 'RSA', a: 'CAN' },
+  { id: 'api_537423', home: 'Brazil', away: 'Japan', date: 'Jun 29', h: 'BRA', a: 'JPN' },
+  { id: 'api_537415', home: 'Germany', away: 'Paraguay', date: 'Jun 29', h: 'GER', a: 'PAR' },
+  { id: 'api_537418', home: 'Netherlands', away: 'Morocco', date: 'Jun 30', h: 'NED', a: 'MAR' },
+  { id: 'api_537424', home: 'Ivory Coast', away: 'Norway', date: 'Jun 30', h: 'CIV', a: 'NOR' },
+  { id: 'api_537416', home: 'France', away: 'Sweden', date: 'Jul 1', h: 'FRA', a: 'SWE' },
+  { id: 'api_537425', home: 'Mexico', away: 'Ecuador', date: 'Jul 1', h: 'MEX', a: 'ECU' },
+  { id: 'api_537426', home: 'England', away: 'Congo DR', date: 'Jul 1', h: 'ENG', a: 'COD' },
+  { id: 'api_537422', home: 'Belgium', away: 'Senegal', date: 'Jul 2', h: 'BEL', a: 'SEN' },
+  { id: 'api_537421', home: 'USA', away: 'Bosnia-H.', date: 'Jul 2', h: 'USA', a: 'BIH' },
+  { id: 'api_537420', home: 'Spain', away: 'Austria', date: 'Jul 2', h: 'ESP', a: 'AUT' },
+  { id: 'api_537419', home: 'Portugal', away: 'Croatia', date: 'Jul 3', h: 'POR', a: 'CRO' },
+  { id: 'api_537429', home: 'Switzerland', away: 'Algeria', date: 'Jul 3', h: 'SUI', a: 'ALG' },
+  { id: 'api_537428', home: 'Australia', away: 'Egypt', date: 'Jul 3', h: 'AUS', a: 'EGY' },
+  { id: 'api_537427', home: 'Argentina', away: 'Cape Verde', date: 'Jul 3', h: 'ARG', a: 'CPV' },
+  { id: 'api_537430', home: 'Colombia', away: 'Ghana', date: 'Jul 4', h: 'COL', a: 'GHA' },
 ];
 
-let selectedWinner = '';
+let currentIdx = 0;
+let savedMatches = new Set();
 
 function init() {
-  const playerSel = document.getElementById('player');
-  PLAYERS.forEach(p => { playerSel.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
-
-  const matchSel = document.getElementById('match');
-  const bulkSel = document.getElementById('bulk-match');
-  R32_MATCHES.forEach(m => {
-    const label = `${m.home} vs ${m.away} (${m.date})`;
-    matchSel.innerHTML += `<option value="${m.id}">${label}</option>`;
-    bulkSel.innerHTML += `<option value="${m.id}">${label}</option>`;
-  });
-
-  updateWinnerBtns();
-  renderBulkMatch();
+  renderTabs();
+  loadMatch(0);
 }
 
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btns button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
+function renderTabs() {
+  const el = document.getElementById('match-tabs');
+  el.innerHTML = MATCHES.map((m, i) =>
+    `<div class="match-btn ${i === currentIdx ? 'active' : ''} ${savedMatches.has(i) ? 'done' : ''}" onclick="loadMatch(${i})">${m.h} v ${m.a}</div>`
+  ).join('');
 }
 
-function updateWinnerBtns() {
-  const matchId = document.getElementById('match').value;
-  const match = R32_MATCHES.find(m => m.id === matchId);
-  if (!match) return;
-  selectedWinner = '';
-  document.getElementById('winner-btns').innerHTML = `
-    <button onclick="selectWinner('${match.home}')">${match.home}</button>
-    <button onclick="selectWinner('${match.away}')">${match.away}</button>
-  `;
-}
+function loadMatch(idx) {
+  currentIdx = idx;
+  const m = MATCHES[idx];
+  renderTabs();
+  document.getElementById('match-title').textContent = `${m.home} vs ${m.away} (${m.date})`;
 
-function selectWinner(w) {
-  selectedWinner = w;
-  document.querySelectorAll('.winner-btns button').forEach(b => {
-    b.classList.toggle('selected', b.textContent === w);
-  });
-}
-
-function saveSingle() {
-  const playerId = document.getElementById('player').value;
-  const matchId = document.getElementById('match').value;
-  const home = parseInt(document.getElementById('home-score').value) || 0;
-  const away = parseInt(document.getElementById('away-score').value) || 0;
-  if (!selectedWinner) { alert('Select a winner'); return; }
-
-  const key = playerId + '_' + matchId;
-  const pred = { winner: selectedWinner, home, away };
-  db.ref('groups/default/predictions/' + key).set(pred).then(() => showToast('Saved!'));
-}
-
-function renderBulkMatch() {
-  const matchId = document.getElementById('bulk-match').value;
-  const match = R32_MATCHES.find(m => m.id === matchId);
-  if (!match) return;
-
-  let html = `<div class="match-header">${match.home} vs ${match.away}</div>`;
+  let html = '';
   PLAYERS.forEach(p => {
-    html += `<div class="player-row">
-      <div class="name">${p.name}</div>
-      <select id="w_${p.id}" style="width:90px;">
-        <option value="">--</option>
-        <option value="${match.home}">${match.home}</option>
-        <option value="${match.away}">${match.away}</option>
-      </select>
-      <input type="number" id="h_${p.id}" min="0" value="" placeholder="H">
-      <span>-</span>
-      <input type="number" id="a_${p.id}" min="0" value="" placeholder="A">
+    html += `<div class="row" id="row_${p.id}">
+      <div class="pname">${p.name}</div>
+      <div class="team-toggle">
+        <button id="th_${p.id}" onclick="pick('${p.id}','${m.home}')">${m.h}</button>
+        <button id="ta_${p.id}" onclick="pick('${p.id}','${m.away}')">${m.a}</button>
+      </div>
+      <div class="scores">
+        <input type="number" id="sh_${p.id}" min="0" inputmode="numeric" onfocus="this.select()">
+        <span>:</span>
+        <input type="number" id="sa_${p.id}" min="0" inputmode="numeric" onfocus="this.select()">
+      </div>
+      <div class="status" id="st_${p.id}"></div>
     </div>`;
   });
-  html += `<button class="save-match-btn" onclick="saveBulk()">Save All for This Match</button>`;
-  document.getElementById('bulk-grid').innerHTML = html;
+  document.getElementById('grid').innerHTML = html;
+  document.getElementById('save-btn').textContent = idx < MATCHES.length - 1 ? 'Save & Next Match →' : 'Save All ✓';
+  updateCounter();
 
-  // Load existing predictions
+  // Load existing
   PLAYERS.forEach(p => {
-    db.ref('groups/default/predictions/' + p.id + '_' + matchId).once('value', snap => {
+    db.ref('groups/default/predictions/' + p.id + '_' + m.id).once('value', snap => {
       const v = snap.val();
       if (!v) return;
-      const wEl = document.getElementById('w_' + p.id);
-      const hEl = document.getElementById('h_' + p.id);
-      const aEl = document.getElementById('a_' + p.id);
-      if (wEl && v.winner) wEl.value = v.winner;
-      if (hEl && v.home !== undefined) hEl.value = v.home;
-      if (aEl && v.away !== undefined) aEl.value = v.away;
+      if (v.winner) {
+        pick(p.id, v.winner, true);
+      }
+      if (v.home !== undefined) document.getElementById('sh_' + p.id).value = v.home;
+      if (v.away !== undefined) document.getElementById('sa_' + p.id).value = v.away;
+      document.getElementById('row_' + p.id).classList.add('saved');
+      document.getElementById('st_' + p.id).textContent = '✓';
     });
   });
 }
 
-function saveBulk() {
-  const matchId = document.getElementById('bulk-match').value;
-  let saved = 0;
+function pick(pid, team, silent) {
+  const m = MATCHES[currentIdx];
+  const hBtn = document.getElementById('th_' + pid);
+  const aBtn = document.getElementById('ta_' + pid);
+  hBtn.classList.toggle('sel', team === m.home);
+  aBtn.classList.toggle('sel', team === m.away);
+  hBtn.dataset.winner = team === m.home ? team : '';
+  aBtn.dataset.winner = team === m.away ? team : '';
+  // Store winner on row
+  document.getElementById('row_' + pid).dataset.winner = team;
+  if (!silent) {
+    // Auto-focus the home score input
+    document.getElementById('sh_' + pid).focus();
+  }
+  updateCounter();
+}
+
+function saveAll() {
+  const m = MATCHES[currentIdx];
   const updates = {};
+  let count = 0;
   PLAYERS.forEach(p => {
-    const w = document.getElementById('w_' + p.id).value;
-    const h = document.getElementById('h_' + p.id).value;
-    const a = document.getElementById('a_' + p.id).value;
-    if (!w) return;
-    const key = p.id + '_' + matchId;
-    updates['groups/default/predictions/' + key] = {
-      winner: w,
+    const row = document.getElementById('row_' + p.id);
+    const winner = row.dataset.winner;
+    if (!winner) return;
+    const h = document.getElementById('sh_' + p.id).value;
+    const a = document.getElementById('sa_' + p.id).value;
+    updates['groups/default/predictions/' + p.id + '_' + m.id] = {
+      winner,
       home: parseInt(h) || 0,
       away: parseInt(a) || 0
     };
-    saved++;
+    count++;
   });
-  if (saved === 0) { alert('No predictions to save'); return; }
-  db.ref().update(updates).then(() => showToast(`Saved ${saved} predictions!`));
+  if (count === 0) { toast('No predictions entered'); return; }
+
+  db.ref().update(updates).then(() => {
+    toast(`Saved ${count} predictions!`);
+    savedMatches.add(currentIdx);
+    renderTabs();
+    // Auto-advance to next match
+    if (currentIdx < MATCHES.length - 1) {
+      setTimeout(() => loadMatch(currentIdx + 1), 600);
+    }
+  });
 }
 
-function showToast(msg) {
+function updateCounter() {
+  const filled = PLAYERS.filter(p => document.getElementById('row_' + p.id).dataset.winner).length;
+  document.getElementById('counter').textContent = `${filled}/${PLAYERS.length} entered`;
+}
+
+function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2000);
+  setTimeout(() => t.style.display = 'none', 1500);
 }
 
 init();
