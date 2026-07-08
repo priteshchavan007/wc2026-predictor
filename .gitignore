@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.pem
 .env
+.netlify/
+scripts/*.log

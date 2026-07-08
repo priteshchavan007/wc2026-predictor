@@ -142,6 +142,19 @@ def main():
             continue
         score = m["score"]
         winner = score.get("winner")
+        is_knockout = m.get("stage") != "GROUP_STAGE"
+
+        # Knockout matches decided on penalties report winner=null (regulation
+        # was a draw). Derive the winner from the penalty tally / fullTime
+        # aggregate — a knockout can never end in a draw.
+        if is_knockout and (not winner or winner == "DRAW"):
+            pen = score.get("penalties") or {}
+            agg = score.get("fullTime") or {}
+            if pen.get("home") is not None and pen.get("away") is not None and pen["home"] != pen["away"]:
+                winner = "HOME_TEAM" if pen["home"] > pen["away"] else "AWAY_TEAM"
+            elif agg.get("home") is not None and agg.get("away") is not None and agg["home"] != agg["away"]:
+                winner = "HOME_TEAM" if agg["home"] > agg["away"] else "AWAY_TEAM"
+
         if not winner:
             continue
 
@@ -163,7 +176,6 @@ def main():
             hc_winner = "Draw"
             dyn_winner = "Draw"
 
-        is_knockout = m.get("stage") != "GROUP_STAGE"
         if is_knockout and score.get("regularTime"):
             ft = score.get("regularTime", {})
         else:

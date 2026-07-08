@@ -7,6 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
   <link href="https://use.typekit.net/qqf1zmr.css" rel="stylesheet">
   <style>
     :root {
@@ -935,7 +936,11 @@
         </div>
         <div class="settings-item" id="notif-toggle" onclick="toggleNotifications()">
           <span class="settings-icon">🔔</span>
-          <span id="notif-toggle-label">Notifications</span>
+          <span id="notif-toggle-label">Daily Reminder</span>
+        </div>
+        <div class="settings-item" id="notif-time-row" style="display:none;justify-content:space-between;align-items:center;">
+          <span style="display:flex;align-items:center;gap:12px;"><span class="settings-icon">⏰</span><span>Remind me at</span></span>
+          <input type="time" id="notif-time-input" value="20:00" onclick="event.stopPropagation();" onchange="onReminderTimeChange(this.value)" style="background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:14px;font-family:inherit;">
         </div>
         <div class="settings-item" onclick="leaveGroup()" style="color:var(--red);">
           <span class="settings-icon">🚪</span>
@@ -982,6 +987,7 @@ function toggleSettings(e) {
   e.stopPropagation();
   const dd = document.getElementById('settings-dropdown');
   dd.classList.toggle('active');
+  if (dd.classList.contains('active')) updateNotifLabel();
 }
 
 function closeSettings() {
@@ -1040,119 +1046,123 @@ function createRipple(event, button) {
 }
 
 // ========== NOTIFICATIONS ==========
+// ========== DAILY PREDICTION REMINDERS (Web Push via FCM) ==========
+// Users pick a daily time to be reminded to set predictions. A GitHub Actions
+// cron (scripts/send_reminders.py) delivers the push — so it works even when
+// the app is closed. This client stores the FCM token + chosen time in RTDB.
+const VAPID_KEY = "REPLACE_WITH_VAPID_PUBLIC_KEY";
 let notificationsEnabled = false;
-let scheduledNotifications = {};
+let reminderTime = localStorage.getItem('wc2026_reminder_time') || '20:00';
+let fcmMessaging = null;
 
-function requestNotifPermission() {
-  if (!('Notification' in window)) return;
-  Notification.requestPermission().then(permission => {
-    if (permission === 'granted') {
-      notificationsEnabled = true;
-      localStorage.setItem('wc2026_notifs', 'true');
-      scheduleUpcomingNotifications();
-      render();
-    }
-  });
+function remindersConfigured() {
+  // The VAPID public key must be set (Firebase Console -> Cloud Messaging)
+  // before push can work. Until then the feature stays inert.
+  return VAPID_KEY && VAPID_KEY.indexOf('REPLACE_WITH') === -1;
 }
 
-function disableNotifications() {
+function pushSupported() {
+  return ('Notification' in window) && ('serviceWorker' in navigator) &&
+         (typeof firebase !== 'undefined') && firebase.messaging &&
+         firebase.messaging.isSupported && firebase.messaging.isSupported();
+}
+
+async function enableReminders() {
+  if (!remindersConfigured()) {
+    alert('Daily reminders aren’t set up yet. Please check back soon!');
+    return;
+  }
+  if (!pushSupported()) {
+    alert('Push notifications are not supported on this browser.\n(On iPhone, add this app to your Home Screen first.)');
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') { updateNotifLabel(); return; }
+
+    const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    if (!fcmMessaging) fcmMessaging = firebase.messaging();
+    const token = await fcmMessaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) { alert('Could not get notification token. Try again.'); return; }
+
+    notificationsEnabled = true;
+    localStorage.setItem('wc2026_notifs', 'true');
+    await saveReminderSettings(token);
+    updateNotifLabel();
+    render();
+  } catch (e) {
+    console.log('enableReminders error:', e);
+    alert('Could not enable notifications: ' + (e.message || e));
+  }
+}
+
+async function disableNotifications() {
   notificationsEnabled = false;
   localStorage.setItem('wc2026_notifs', 'false');
-  Object.values(scheduledNotifications).forEach(entry => {
-    if (entry && entry.timeout) clearTimeout(entry.timeout);
-  });
-  scheduledNotifications = {};
+  if (currentUser) {
+    try { await db.ref('users/' + currentUser + '/reminder/enabled').set(false); } catch (e) {}
+  }
+  updateNotifLabel();
   render();
 }
 
-function dismissNotifPrompt() {
-  localStorage.setItem('wc2026_notifs_dismissed', 'true');
-  const prompt = document.querySelector('.notif-prompt');
-  if (prompt) prompt.remove();
+// Persist the reminder config for this user so the cron sender can reach them.
+async function saveReminderSettings(token) {
+  if (!currentUser) return;
+  const payload = {
+    enabled: true,
+    time: reminderTime,
+    tzOffset: new Date().getTimezoneOffset(), // minutes to add to local to get UTC
+    updatedAt: new Date().toISOString()
+  };
+  if (token) payload.token = token;
+  await db.ref('users/' + currentUser + '/reminder').update(payload);
 }
 
 function toggleNotifications() {
   if (notificationsEnabled) {
     disableNotifications();
   } else {
-    requestNotifPermission();
+    enableReminders();
   }
+}
+
+// Called by the time input in Settings.
+function onReminderTimeChange(value) {
+  if (!value) return;
+  reminderTime = value;
+  localStorage.setItem('wc2026_reminder_time', value);
+  if (notificationsEnabled) saveReminderSettings(null);
   updateNotifLabel();
 }
 
 function updateNotifLabel() {
   const toggle = document.getElementById('notif-toggle');
   if (!toggle) return;
-  if (!('Notification' in window) || Notification.permission === 'denied') {
+  // Hide entirely until reminders are configured, unsupported, or blocked.
+  if (!remindersConfigured() || !pushSupported() || Notification.permission === 'denied') {
     toggle.style.display = 'none';
+    const timeRow = document.getElementById('notif-time-row');
+    if (timeRow) timeRow.style.display = 'none';
     return;
   }
   toggle.style.display = '';
   toggle.style.color = notificationsEnabled ? 'var(--green)' : '';
   const label = document.getElementById('notif-toggle-label');
   if (label) {
-    label.textContent = notificationsEnabled ? 'Notifications: On' : 'Notifications: Off';
+    label.textContent = notificationsEnabled
+      ? 'Daily Reminder: On' : 'Daily Reminder: Off';
+  }
+  // Show/hide the time picker row depending on enabled state.
+  const timeRow = document.getElementById('notif-time-row');
+  if (timeRow) {
+    timeRow.style.display = notificationsEnabled ? 'flex' : 'none';
+    const input = document.getElementById('notif-time-input');
+    if (input && input.value !== reminderTime) input.value = reminderTime;
   }
 }
 
-function fireMatchNotification(match) {
-  if (!notificationsEnabled || Notification.permission !== 'granted') return;
-  new Notification('Match Starting Soon! ⚽', {
-    body: `${match.team1} vs ${match.team2} kicks off in 5 minutes! Make your prediction now.`,
-    tag: match.id
-  });
-}
-
-function scheduleUpcomingNotifications() {
-  if (!notificationsEnabled) return;
-  Object.values(scheduledNotifications).forEach(entry => {
-    if (entry && entry.timeout) clearTimeout(entry.timeout);
-  });
-  scheduledNotifications = {};
-
-  const now = Date.now();
-  getAllMatches().forEach(match => {
-    if (getResultForMatch(match)) return;
-    const kickoff = getKickoffTime(match);
-    if (!kickoff || kickoff <= now) return;
-    const fiveMinBefore = kickoff - (5 * 60 * 1000);
-    if (fiveMinBefore <= now) return;
-
-    const delay = fiveMinBefore - now;
-    if (delay > 24 * 60 * 60 * 1000) return;
-
-    scheduledNotifications[match.id] = {
-      timeout: setTimeout(() => {
-        fireMatchNotification(match);
-        delete scheduledNotifications[match.id];
-      }, delay),
-      targetTime: fiveMinBefore,
-      match: match
-    };
-  });
-}
-
-function recheckScheduledNotifications() {
-  if (!notificationsEnabled) return;
-  const now = Date.now();
-  Object.keys(scheduledNotifications).forEach(matchId => {
-    const entry = scheduledNotifications[matchId];
-    if (!entry) return;
-    clearTimeout(entry.timeout);
-    if (entry.targetTime <= now) {
-      fireMatchNotification(entry.match);
-      delete scheduledNotifications[matchId];
-    } else {
-      const newDelay = entry.targetTime - now;
-      scheduledNotifications[matchId].timeout = setTimeout(() => {
-        fireMatchNotification(entry.match);
-        delete scheduledNotifications[matchId];
-      }, newDelay);
-    }
-  });
-}
-
-// Check if notifications were previously enabled
+// Check if reminders were previously enabled on this device.
 if (localStorage.getItem('wc2026_notifs') === 'true' && 'Notification' in window && Notification.permission === 'granted') {
   notificationsEnabled = true;
 }
@@ -1690,7 +1700,6 @@ function initListeners() {
   const resCb = resRef.on('value', snap => {
     results = snap.val() || {};
     render();
-    if (notificationsEnabled) scheduleUpcomingNotifications();
   });
   activeListeners.push({ ref: resRef, type: 'value', cb: resCb });
 
@@ -2016,7 +2025,22 @@ function showApp() {
   const displayName = localStorage.getItem('wc2026_displayName') || currentUser;
   document.getElementById('display-name').textContent = displayName;
   render();
-  if (notificationsEnabled) scheduleUpcomingNotifications();
+  // Re-sync reminder token for this logged-in user (token may have rotated,
+  // or was enabled before login). Best-effort; failures are non-fatal.
+  if (notificationsEnabled && currentUser && pushSupported()) {
+    refreshReminderToken();
+  }
+}
+
+async function refreshReminderToken() {
+  try {
+    const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    if (!fcmMessaging) fcmMessaging = firebase.messaging();
+    const token = await fcmMessaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (token) await saveReminderSettings(token);
+  } catch (e) {
+    console.log('refreshReminderToken error:', e);
+  }
 }
 
 function changeName() {
@@ -2912,11 +2936,24 @@ async function fetchLiveScores() {
       const status = m.status;
       const isKnockout = m.stage && m.stage !== 'GROUP_STAGE';
       const ft = (isKnockout && score.regularTime) ? score.regularTime : score.fullTime;
+      // Determine the winning side. For knockouts decided on penalties the API
+      // reports winner=null (regulation was a draw), so derive it from the
+      // penalty tally / fullTime aggregate — a knockout can never be a draw.
+      let winnerSide = score.winner; // 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
+      if (isKnockout && (!winnerSide || winnerSide === 'DRAW')) {
+        const pen = score.penalties;
+        const agg = score.fullTime;
+        if (pen && pen.home != null && pen.away != null && pen.home !== pen.away) {
+          winnerSide = pen.home > pen.away ? 'HOME_TEAM' : 'AWAY_TEAM';
+        } else if (agg && agg.home != null && agg.away != null && agg.home !== agg.away) {
+          winnerSide = agg.home > agg.away ? 'HOME_TEAM' : 'AWAY_TEAM';
+        }
+      }
       const scoreData = {
         status,
-        homeScore: ft.home,
+        homeScore: ft.home,   // scoreline points use end of regulation/extra time, NOT penalties
         awayScore: ft.away,
-        winner: score.winner
+        winner: winnerSide
       };
 
       // Find in hardcoded MATCHES
@@ -2936,16 +2973,17 @@ async function fetchLiveScores() {
       if (hardcodedMatch) liveScores[hardcodedMatch.id] = scoreData;
       liveScores[apiId] = scoreData;
 
-      if (status === 'FINISHED' && score.winner) {
+      if (status === 'FINISHED' && winnerSide) {
         // Determine winner names for both hardcoded and dynamic team names
         let hardcodedWinner, dynamicWinner;
-        if (score.winner === 'HOME_TEAM') {
+        if (winnerSide === 'HOME_TEAM') {
           hardcodedWinner = hardcodedMatch ? hardcodedMatch.team1 : homeName;
           dynamicWinner = homeName;
-        } else if (score.winner === 'AWAY_TEAM') {
+        } else if (winnerSide === 'AWAY_TEAM') {
           hardcodedWinner = hardcodedMatch ? hardcodedMatch.team2 : awayName;
           dynamicWinner = awayName;
         } else {
+          // Only group-stage matches can legitimately end in a draw.
           hardcodedWinner = 'Draw';
           dynamicWinner = 'Draw';
         }
@@ -3112,14 +3150,12 @@ function silentRefresh() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     silentRefresh();
-    recheckScheduledNotifications();
   }
 });
 
 window.addEventListener('focus', () => {
   if (document.visibilityState === 'visible') {
     silentRefresh();
-    recheckScheduledNotifications();
   }
 });
 </script>
