@@ -2910,6 +2910,27 @@ const isAdmin = false; // Admin result override removed — results are automati
 // ========== LIVE SCORES API ==========
 let liveScores = {};
 
+// Returns { home, away } = the scoreline used for scoreline/exact points.
+// fullTime already includes extra-time goals, so it is correct for normal
+// matches AND for matches decided in extra time. Only when a knockout is
+// decided on penalties does fullTime hold the shootout tally — in that case
+// the true end-of-ET score is regularTime + extraTime (extraTime is the goals
+// scored IN extra time, i.e. incremental, so we add the two).
+function knockoutScoreline(score, isKnockout) {
+  const ft = score.fullTime || {};
+  const pen = score.penalties;
+  const decidedOnPens = isKnockout && pen && pen.home != null && pen.away != null;
+  if (decidedOnPens) {
+    const reg = score.regularTime || {};
+    const et = score.extraTime || {};
+    return {
+      home: (reg.home || 0) + (et.home || 0),
+      away: (reg.away || 0) + (et.away || 0),
+    };
+  }
+  return { home: ft.home, away: ft.away };
+}
+
 async function fetchLiveScores() {
   try {
     const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
@@ -2935,7 +2956,12 @@ async function fetchLiveScores() {
       const score = m.score;
       const status = m.status;
       const isKnockout = m.stage && m.stage !== 'GROUP_STAGE';
-      const ft = (isKnockout && score.regularTime) ? score.regularTime : score.fullTime;
+      // Scoreline for points = score at the end of regulation/extra time, EXCLUDING
+      // any penalty shootout. For most matches fullTime is correct (it already
+      // includes extra-time goals). But when a knockout is decided on penalties the
+      // API reports the shootout tally in fullTime, so fall back to regularTime +
+      // extraTime (the true end-of-ET score) in that case.
+      const ft = knockoutScoreline(score, isKnockout);
       // Determine the winning side. For knockouts decided on penalties the API
       // reports winner=null (regulation was a draw), so derive it from the
       // penalty tally / fullTime aggregate — a knockout can never be a draw.

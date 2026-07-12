@@ -97,6 +97,28 @@ def normalize(name):
     return TEAM_MAP.get(name, name).lower()
 
 
+def knockout_scoreline(score, is_knockout):
+    """Scoreline used for scoreline/exact points: end of regulation/extra time,
+    EXCLUDING any penalty shootout.
+
+    fullTime already includes extra-time goals, so it is correct for normal
+    matches and for matches decided in extra time. Only when a knockout is
+    decided on penalties does fullTime hold the shootout tally — in that case
+    the true end-of-ET score is regularTime + extraTime (extraTime is the goals
+    scored IN extra time, i.e. incremental, so we add the two)."""
+    ft = score.get("fullTime") or {}
+    pen = score.get("penalties") or {}
+    decided_on_pens = is_knockout and pen.get("home") is not None and pen.get("away") is not None
+    if decided_on_pens:
+        reg = score.get("regularTime") or {}
+        et = score.get("extraTime") or {}
+        return {
+            "home": (reg.get("home") or 0) + (et.get("home") or 0),
+            "away": (reg.get("away") or 0) + (et.get("away") or 0),
+        }
+    return {"home": ft.get("home"), "away": ft.get("away")}
+
+
 def find_hardcoded(home, away):
     h = normalize(home)
     a = normalize(away)
@@ -176,10 +198,7 @@ def main():
             hc_winner = "Draw"
             dyn_winner = "Draw"
 
-        if is_knockout and score.get("regularTime"):
-            ft = score.get("regularTime", {})
-        else:
-            ft = score.get("fullTime", {})
+        ft = knockout_scoreline(score, is_knockout)
         score_data = {
             "homeScore": ft.get("home"),
             "awayScore": ft.get("away"),
@@ -208,10 +227,7 @@ def main():
         mid, t1, t2 = find_hardcoded(home, away)
         api_id = f'api_{m["id"]}'
         is_knockout = m.get("stage") != "GROUP_STAGE"
-        if is_knockout and m["score"].get("regularTime"):
-            ft = m["score"].get("regularTime", {})
-        else:
-            ft = m["score"].get("fullTime", {})
+        ft = knockout_scoreline(m["score"], is_knockout)
         score_data = {
             "homeScore": ft.get("home"),
             "awayScore": ft.get("away"),
