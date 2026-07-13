@@ -1683,15 +1683,64 @@ function detachListeners() {
   activeListeners = [];
 }
 
+// ========== OFFLINE CACHE ==========
+// Cache the data that drives the UI so a database outage (rules denied / network
+// error) degrades to stale-but-visible data instead of empty tabs / "All matches
+// completed". Best-effort: every failure is swallowed.
+function cacheSet(key, value) {
+  try { localStorage.setItem('wc2026_cache_' + key, JSON.stringify(value)); } catch (e) {}
+}
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem('wc2026_cache_' + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+// Merge a raw fixtures map (from Firebase or cache) into dynamicMatches.
+function applyFixtures(fbFixtures) {
+  const converted = [];
+  Object.entries(fbFixtures || {}).forEach(([numId, f]) => {
+    const m = { id: parseInt(numId), homeTeam: { shortName: f.home }, awayTeam: { shortName: f.away }, utcDate: f.utcDate, stage: f.stage, group: null, status: f.status, score: { fullTime: { home: null, away: null }, winner: null } };
+    const local = apiMatchToLocal(m);
+    if (local) converted.push(local);
+  });
+  if (converted.length === 0) return false;
+  if (dynamicMatches.length === 0) {
+    dynamicMatches = [...MATCHES, ...converted];
+  } else {
+    const existingIds = new Set(dynamicMatches.map(m => m.id));
+    converted.forEach(m => { if (!existingIds.has(m.id)) dynamicMatches.push(m); });
+  }
+  return true;
+}
+
+// Populate the UI globals from cache BEFORE listeners attach, so the first
+// render has data even if Firebase is slow or denied. Fresh listener data
+// overwrites these on success.
+function hydrateFromCache() {
+  const cResults = cacheGet('results'); if (cResults) results = cResults;
+  const cScores = cacheGet('scores'); if (cScores) Object.keys(cScores).forEach(id => { if (!liveScores[id]) liveScores[id] = cScores[id]; });
+  const cBase = cacheGet('basePoints'); if (cBase) basePoints = cBase;
+  const cCut = cacheGet('scoringCutoff'); if (cCut) scoringCutoff = cCut;
+  const cFix = cacheGet('fixtures'); if (cFix) applyFixtures(cFix);
+  if (currentGroup) {
+    const cPreds = cacheGet('predictions_' + currentGroup); if (cPreds) predictions = cPreds;
+    const cPlayers = cacheGet('players_' + currentGroup); if (cPlayers) players = cPlayers;
+  }
+}
+
 function initListeners() {
   if (!currentGroup) return;
   detachListeners();
+  hydrateFromCache();
 
   const groupPath = 'groups/' + currentGroup;
 
   const predRef = db.ref(groupPath + '/predictions');
   const predCb = predRef.on('value', snap => {
     predictions = snap.val() || {};
+    cacheSet('predictions_' + currentGroup, predictions);
     render();
   });
   activeListeners.push({ ref: predRef, type: 'value', cb: predCb });
@@ -1699,6 +1748,7 @@ function initListeners() {
   const resRef = db.ref('results');
   const resCb = resRef.on('value', snap => {
     results = snap.val() || {};
+    cacheSet('results', results);
     render();
   });
   activeListeners.push({ ref: resRef, type: 'value', cb: resCb });
@@ -1709,6 +1759,7 @@ function initListeners() {
     Object.keys(fbScores).forEach(id => {
       if (!liveScores[id]) liveScores[id] = fbScores[id];
     });
+    cacheSet('scores', fbScores);
     render();
   });
   activeListeners.push({ ref: scoresRef, type: 'value', cb: scoresCb });
@@ -1716,26 +1767,15 @@ function initListeners() {
   const fixturesRef = db.ref('fixtures');
   const fixturesCb = fixturesRef.on('value', snap => {
     const fbFixtures = snap.val() || {};
-    const converted = [];
-    Object.entries(fbFixtures).forEach(([numId, f]) => {
-      const m = { id: parseInt(numId), homeTeam: { shortName: f.home }, awayTeam: { shortName: f.away }, utcDate: f.utcDate, stage: f.stage, group: null, status: f.status, score: { fullTime: { home: null, away: null }, winner: null } };
-      const local = apiMatchToLocal(m);
-      if (local) converted.push(local);
-    });
-    if (converted.length > 0 && dynamicMatches.length === 0) {
-      dynamicMatches = [...MATCHES, ...converted];
-      render();
-    } else if (converted.length > 0) {
-      const existingIds = new Set(dynamicMatches.map(m => m.id));
-      converted.forEach(m => { if (!existingIds.has(m.id)) dynamicMatches.push(m); });
-      render();
-    }
+    cacheSet('fixtures', fbFixtures);
+    if (applyFixtures(fbFixtures)) render();
   });
   activeListeners.push({ ref: fixturesRef, type: 'value', cb: fixturesCb });
 
   const playRef = db.ref(groupPath + '/players');
   const playCb = playRef.on('value', snap => {
     players = snap.val() || {};
+    cacheSet('players_' + currentGroup, players);
     render();
   });
   activeListeners.push({ ref: playRef, type: 'value', cb: playCb });
@@ -1746,8 +1786,8 @@ function initListeners() {
   });
   activeListeners.push({ ref: rankRef, type: 'value', cb: rankCb });
 
-  db.ref('basePoints').once('value', snap => { basePoints = snap.val() || {}; render(); });
-  db.ref('scoringCutoff').once('value', snap => { scoringCutoff = snap.val() || '2026-07-01'; render(); });
+  db.ref('basePoints').once('value', snap => { basePoints = snap.val() || {}; cacheSet('basePoints', basePoints); render(); });
+  db.ref('scoringCutoff').once('value', snap => { scoringCutoff = snap.val() || '2026-07-01'; cacheSet('scoringCutoff', scoringCutoff); render(); });
 
   // Load group info
   db.ref(groupPath + '/info').once('value', snap => {
@@ -3181,6 +3221,7 @@ db.ref('scores').on('value', snap => {
   Object.keys(fbScores).forEach(id => {
     liveScores[id] = fbScores[id];
   });
+  cacheSet('scores', fbScores);
 });
 
 // ========== SILENT BACKGROUND REFRESH ==========
