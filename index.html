@@ -2011,6 +2011,15 @@ function afterLogin() {
       // Show group selection
       showGroupSelection();
     }
+  }, err => {
+    // Read failed (rules deny / network). Don't hang on a blank page: resume
+    // the cached group if we have one, else show group selection.
+    console.log('afterLogin groups read failed:', err);
+    if (currentGroup) {
+      selectGroup(currentGroup);
+    } else {
+      showGroupSelection();
+    }
   });
 }
 
@@ -3134,7 +3143,7 @@ if (currentUser) {
           } else {
             afterLogin();
           }
-        });
+        }, () => afterLogin());
       } else {
         afterLogin();
       }
@@ -3144,6 +3153,18 @@ if (currentUser) {
       localStorage.removeItem('wc2026_group');
       currentUser = null;
       document.getElementById('login-view').style.display = 'block';
+    }
+  }, err => {
+    // The read failed (e.g. database rules deny access / network error).
+    // Never leave the page blank: fall back to the cached session if we have
+    // one, otherwise show the login screen. The realtime listeners recover on
+    // their own once access is restored.
+    console.log('Init users read failed:', err);
+    if (currentGroup) {
+      showApp();
+      initListeners();
+    } else {
+      afterLogin();
     }
   });
 } else {
