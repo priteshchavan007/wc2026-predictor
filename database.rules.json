@@ -1,0 +1,17 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "results":       { ".read": true, ".write": false },
+    "scores":        { ".read": true, ".write": false },
+    "fixtures":      { ".read": true, ".write": false },
+    "basePoints":    { ".read": true, ".write": false },
+    "scoringCutoff": { ".read": true, ".write": false },
+
+    "groups":     { ".read": true, ".write": true },
+    "groupCodes": { ".read": true, ".write": true },
+    "users":      { ".read": true, ".write": true },
+    "analytics":  { ".read": true, ".write": true }
+  }
+}
