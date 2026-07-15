@@ -10,11 +10,11 @@ can mint an OAuth token for the FCM HTTP v1 API.
 """
 import json
 import os
-import time
 import urllib.request
 import urllib.error
-import urllib.parse
 from datetime import datetime, timedelta, timezone
+
+from firebase_auth import get_access_token
 
 FIREBASE_URL = "https://wc2026-predictor-56ab2-default-rtdb.firebaseio.com"
 PROJECT_ID = "wc2026-predictor-56ab2"
@@ -49,44 +49,7 @@ def firebase_put(path, value):
         return False
 
 
-def get_access_token(sa_info):
-    """Mint an OAuth2 access token from the service account via JWT bearer grant."""
-    import base64
-    import hashlib
-    try:
-        from cryptography.hazmat.primitives import serialization, hashes
-        from cryptography.hazmat.primitives.asymmetric import padding
-    except ImportError:
-        raise SystemExit("cryptography package required: pip install cryptography")
-
-    def b64url(data):
-        return base64.urlsafe_b64encode(data).rstrip(b"=")
-
-    now = int(time.time())
-    header = {"alg": "RS256", "typ": "JWT"}
-    claim = {
-        "iss": sa_info["client_email"],
-        "scope": "https://www.googleapis.com/auth/firebase.messaging",
-        "aud": "https://oauth2.googleapis.com/token",
-        "iat": now,
-        "exp": now + 3600,
-    }
-    signing_input = b64url(json.dumps(header).encode()) + b"." + b64url(json.dumps(claim).encode())
-
-    private_key = serialization.load_pem_private_key(
-        sa_info["private_key"].encode(), password=None
-    )
-    signature = private_key.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
-    assertion = signing_input + b"." + b64url(signature)
-
-    body = urllib.parse.urlencode({
-        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "assertion": assertion.decode(),
-    }).encode()
-    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=body, method="POST")
-    req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    resp = urllib.request.urlopen(req)
-    return json.loads(resp.read())["access_token"]
+FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
 
 
 def send_push(token, access_token, title, body):
@@ -119,7 +82,7 @@ def main():
     if not sa_raw:
         raise SystemExit("FIREBASE_SERVICE_ACCOUNT env var not set")
     sa_info = json.loads(sa_raw)
-    access_token = get_access_token(sa_info)
+    access_token = get_access_token(sa_info, FCM_SCOPE)
 
     users = firebase_get("users") or {}
     now_utc = datetime.now(timezone.utc)

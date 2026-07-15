@@ -2,8 +2,23 @@ import json
 import os
 import urllib.request
 
+from firebase_auth import get_db_token
+
 API_TOKEN = os.environ.get("FOOTBALL_API_TOKEN", "49b916e7852b422187139132b9cb6ad7")
 FIREBASE_URL = "https://wc2026-predictor-56ab2-default-rtdb.firebaseio.com"
+
+# Admin access token so writes to results/scores/fixtures succeed once those
+# paths are locked to read-only for clients. Falls back to None (unauthenticated,
+# rules-governed) when FIREBASE_SERVICE_ACCOUNT isn't set.
+DB_TOKEN = get_db_token(os.environ.get("FIREBASE_SERVICE_ACCOUNT"))
+
+
+def _auth_url(url):
+    """Append the OAuth access token so the request is treated as admin."""
+    if not DB_TOKEN:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}access_token={DB_TOKEN}"
 
 TEAM_MAP = {
     "Korea Republic": "South Korea",
@@ -129,7 +144,7 @@ def find_hardcoded(home, away):
 
 
 def firebase_put(path, value):
-    url = f"{FIREBASE_URL}/{path}.json"
+    url = _auth_url(f"{FIREBASE_URL}/{path}.json")
     data = json.dumps(value).encode()
     req = urllib.request.Request(url, data=data, method="PUT")
     req.add_header("Content-Type", "application/json")
@@ -142,7 +157,7 @@ def firebase_put(path, value):
 
 
 def firebase_get(path):
-    url = f"{FIREBASE_URL}/{path}.json"
+    url = _auth_url(f"{FIREBASE_URL}/{path}.json")
     try:
         resp = urllib.request.urlopen(url)
         return json.loads(resp.read())
